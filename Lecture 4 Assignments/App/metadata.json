@@ -1,5 +1,5 @@
 {
-  "name": "Local AI Model & Hardware Planner",
+  "name": "Hardware Correlation For Local Ai Model Deployment",
   "description": "Information on open weights AI models, parameters, performance metrics, and a dynamic hardware estimator for local inference with different quantizations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

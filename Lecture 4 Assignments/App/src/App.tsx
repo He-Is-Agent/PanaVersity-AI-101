@@ -200,7 +200,7 @@ export default function App() {
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black tracking-tight text-[#1A1A1A] italic">
-            The Local AI Model & Hardware Planner
+            Hardware Correlation For Local Ai Model Deployment
           </h1>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs font-mono text-[#5C5852] border-t border-b border-[#E5E2DD] py-2.5 max-w-2xl mx-auto uppercase tracking-wider">
