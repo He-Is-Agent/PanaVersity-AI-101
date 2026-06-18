@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake II Retro - Nokia 3310 Emulator</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font pairings -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            retro: ['"Press Start 2P"', 'monospace'],
+            mono: ['"Share Tech Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style type="text/css">
+    /* Scanline overlay for CRT look */
+    .nokia-screen-lcd {
+      position: relative;
+      overflow: hidden;
+    }
+    .nokia-screen-lcd::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.08) 50%);
+      background-size: 100% 2px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    /* Paper background pixel-sub-pixel grid effect */
+    .nokia-lcd-grain {
+      background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 0);
+      background-size: 3px 3px;
+    }
+    /* Buttons tactile feel */
+    .nokia-btn {
+      transition: transform 0.05s ease-out, box-shadow 0.05s ease-out;
+    }
+    .nokia-btn:active {
+      transform: translateY(2px) scale(0.97);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between overflow-x-hidden select-none">
+
+  <!-- Header Panel -->
+  <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="h-9 w-9 bg-green-500/10 flex items-center justify-center rounded-lg border border-green-500/20">
+        <span class="text-xl animate-bounce">🐍</span>
+      </div>
+      <div>
+        <h1 class="text-md sm:text-lg font-bold text-white flex items-center gap-2">
+          Snake II <span class="text-[10px] bg-slate-850 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded font-mono">STANDALONE FILE</span>
+        </h1>
+        <p class="text-xs text-slate-400">Deploy anywhere: just double-click to play!</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3">
+      <button onclick="toggleAudio()" class="px-2 py-1 bg-slate-800 text-xs rounded hover:bg-slate-700 text-slate-300 hover:text-white flex items-center gap-1">
+        <span id="header-audio-icon">🔊</span> <span class="hidden sm:inline">Audio</span>
+      </button>
+      <button onclick="rebootPhone()" class="px-2 py-1 bg-slate-800 text-xs rounded hover:bg-slate-700 text-slate-300 hover:text-white">
+        🔄 Reboot
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Body Simulator content -->
+  <main class="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 md:p-8 max-w-6xl mx-auto w-full gap-8">
+    
+    <!-- Left rules list panel -->
+    <div class="w-full lg:w-72 flex flex-col space-y-4">
+      <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
+        <h2 class="font-bold text-slate-300 tracking-wider uppercase text-[10px] flex items-center gap-1.5">
+          ℹ️ Snake II Modes
+        </h2>
+        <div class="space-y-2">
+          <div class="p-2.5 bg-slate-950/80 rounded border border-slate-850">
+            <span class="font-bold text-indigo-400">1. SPEED UP CHALLENGE</span>
+            <p class="text-slate-400 mt-1">Speed grows faster as you accumulate every 10 points (+1 speed scale, shortening tick cooldowns).</p>
+          </div>
+          <div class="p-2.5 bg-slate-950/80 rounded border border-slate-850">
+            <span class="font-bold text-indigo-400">2. CLOSED SOLID BOX</span>
+            <p class="text-slate-400 mt-1">Standard solid borders active. Bumping into boundary edges results in structural game crash!</p>
+          </div>
+          <div class="p-2.5 bg-slate-950/80 rounded border border-slate-850">
+            <span class="font-bold text-indigo-400">3. NOSTALGIA MAZES</span>
+            <p class="text-slate-400 mt-1">Choose from classic designs (Labyrinth, Corridor Tunnel, Apartment blocks, spirals) featuring internal physical walls.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center layout: Hardware 3310 Emulator Frame -->
+    <div class="flex flex-col items-center">
+      <div id="phone-case" class="p-6 md:p-7 rounded-[44px] border-4 flex flex-col items-center w-[320px] md:w-[350px] bg-slate-700 border-slate-800 shadow-2xl shadow-slate-900/50">
+        
+        <!-- Physical ear speaker -->
+        <div class="w-16 h-1.5 bg-slate-950 rounded-full mb-3 border border-slate-850" style="margin-top: -5px"></div>
+        <div class="text-slate-350 font-bold text-xs tracking-widest text-center mb-5 -skew-x-6 font-mono">NOKIA</div>
+
+        <!-- LCD Screen Screen Case -->
+        <div class="p-4 rounded-[18px] border-4 border-slate-500 bg-slate-800 w-full overflow-hidden">
+          <div id="lcd-screen" class="nokia-screen-lcd nokia-lcd-grain border-2 border-slate-950 rounded-sm p-1.5 shadow-[0_0_12px_rgba(156,189,15,0.45)]" style="background-color: #9cbd0f;">
+            <canvas id="lcd-canvas" width="160" height="80" class="w-full h-auto block" style="image-rendering: pixelated;"></canvas>
+          </div>
+          
+          <!-- Backlight color adjusters -->
+          <div class="flex justify-between items-center mt-2.5 px-0.5 text-[8px] font-mono text-slate-400 font-bold">
+            <span class="flex items-center gap-1">
+              💡 LCD Glow:
+              <input type="checkbox" id="lcd-power-chk" checked onchange="toggleBacklight()" class="cursor-pointer">
+            </span>
+            <span>SNAKE II STANDALONE</span>
+          </div>
+        </div>
+
+        <!-- Keypads Grid -->
+        <div class="w-full mt-5 space-y-3.5">
+          <div class="grid grid-cols-3 gap-3">
+            <!-- Functional Left Soft Key -->
+            <button onclick="triggerKeyAction('SOFT_LEFT')" class="h-9 rounded-b-xl border border-slate-500 bg-gradient-to-b from-slate-350 to-slate-450 hover:brightness-110 active:translate-y-[1px] text-slate-900 text-[10px] font-bold shadow-md cursor-pointer">
+              OK
+            </button>
+            
+            <!-- Navigation Rocker buttons -->
+            <div class="flex flex-col space-y-0.5">
+              <button onclick="triggerKeyAction('UP')" class="h-5 rounded-t-lg bg-gradient-to-b from-slate-300 to-slate-400 hover:brightness-110 active:translate-y-[1px] text-stone-800 text-[9px] flex justify-center items-center font-bold cursor-pointer">▲</button>
+              <button onclick="triggerKeyAction('DOWN')" class="h-5 rounded-b-lg bg-gradient-to-b from-slate-400 to-slate-550 hover:brightness-110 active:translate-y-[1px] text-stone-800 text-[9px] flex justify-center items-center font-bold cursor-pointer">▼</button>
+            </div>
+
+            <!-- Functional Right Soft Key -->
+            <button onclick="triggerKeyAction('SOFT_RIGHT')" class="h-9 rounded-b-xl border border-slate-500 bg-gradient-to-b from-slate-350 to-slate-450 hover:brightness-110 active:translate-y-[1px] text-slate-900 text-[10px] font-bold shadow-md cursor-pointer">
+              C
+            </button>
+          </div>
+
+          <!-- Number Keypad matrix -->
+          <div class="grid grid-cols-3 gap-x-3 gap-y-2 px-1">
+            <button onclick="handleKeyClick('1')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span>1</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">HELP</span>
+            </button>
+            <button onclick="handleKeyDirection('2', 'UP')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span class="text-indigo-600">2 ▲</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">abc</span>
+            </button>
+            <button onclick="handleKeyClick('3')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span>3</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">def</span>
+            </button>
+            <button onclick="handleKeyDirection('4', 'LEFT')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span class="text-indigo-600">4 ◄</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">ghi</span>
+            </button>
+            <button onclick="handleKeyDirection('5', 'ENTER')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span>5 OK</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">jkl</span>
+            </button>
+            <button onclick="handleKeyDirection('6', 'RIGHT')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span class="text-indigo-600">6 ►</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">mno</span>
+            </button>
+            <button onclick="handleKeyClick('7')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span>7</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">pqrs</span>
+            </button>
+            <button onclick="handleKeyDirection('8', 'DOWN')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span class="text-indigo-600">8 ▼</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">tuv</span>
+            </button>
+            <button onclick="handleKeyClick('9')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span>9</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">wxyz</span>
+            </button>
+            <button onclick="triggerKeyAction('STAR')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span class="text-amber-600">*</span><span class="text-[6px] font-normal tracking-wide opacity-50 font-mono">SETTING</span>
+            </button>
+            <button onclick="handleKeyClick('0')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span>0</span><span class="text-[6.5px] font-normal tracking-wide opacity-50 font-mono">space</span>
+            </button>
+            <button onclick="triggerKeyAction('HASH')" class="h-10 rounded-full bg-radial from-slate-250 to-slate-400 text-stone-900 text-xs font-bold border border-slate-300 shadow active:translate-y-[1px] cursor-pointer flex flex-col justify-center items-center">
+              <span class="text-emerald-600">#</span><span class="text-[6px] font-normal tracking-wide opacity-50 font-mono">SHELL</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right-side customizations panels -->
+    <div class="w-full lg:w-72 flex flex-col space-y-4">
+      <!-- High Scores listing -->
+      <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl space-y-3 font-sans text-xs">
+        <h3 class="font-bold text-slate-300 tracking-wider uppercase text-[10px]">
+          🏆 EMULATOR HIGH SCORES
+        </h3>
+        <div id="highscores-list" class="space-y-2 text-slate-300">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+      
+      <!-- Aesthetic customized color switches -->
+      <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
+        <h3 class="font-bold text-slate-300 tracking-wider uppercase text-[10px]">
+          🎨 THEME CUSTOMIZER
+        </h3>
+        <div class="space-y-3">
+          <div>
+            <span class="text-slate-400 block mb-1">Plastic Case Shell:</span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="setShellStyle('classic')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Grey 3310</button>
+              <button onclick="setShellStyle('cyan')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Cyan Teal</button>
+              <button onclick="setShellStyle('ruby')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Ruby Red</button>
+              <button onclick="setShellStyle('cyber')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Cyber Purple</button>
+            </div>
+          </div>
+          <div>
+            <span class="text-slate-400 block mb-1">LCD Color Backlight:</span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="setLcdStyle('green')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Matrix Green</button>
+              <button onclick="setLcdStyle('amber')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Warm Amber</button>
+              <button onclick="setLcdStyle('cyan')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Cool Cyan</button>
+              <button onclick="setLcdStyle('dark')" class="px-2 py-1 rounded border border-slate-700 hover:border-slate-500 bg-slate-800 text-center text-[11px] cursor-pointer text-slate-300">Blue Dark</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer copyright details -->
+  <footer class="border-t border-slate-900 bg-slate-950 p-4 text-center text-slate-500 text-xs">
+    <span>Snake II Retro Mobile Nokia Simulator. Double-click the file to run offline anywhere!</span>
+  </footer>
+
+  <!-- EMULATOR GRAPHICS & PHYSICS SCRIPTS -->
+  <script type="text/javascript">
+    // --- 1. Sound effects engine using Web Audio API ---
+    class WebAudioSynth {
+      constructor() {
+        this.ctx = null;
+        this.volumeLevel = 3; // 0-5
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === "suspended") {
+          this.ctx.resume();
+        }
+      }
+      play(freqs, durs, wave = "square") {
+        if (!this.enabled || this.volumeLevel === 0) return;
+        try {
+          this.init();
+          if (!this.ctx || this.ctx.state === "suspended") return;
+          
+          let now = this.ctx.currentTime;
+          const masterGain = this.ctx.createGain();
+          masterGain.gain.setValueAtTime((this.volumeLevel / 5) * 0.05, now);
+          masterGain.connect(this.ctx.destination);
+
+          freqs.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const noteG = this.ctx.createGain();
+            const duration = (durs[i] || 100) / 1000;
+
+            osc.type = wave;
+            osc.frequency.setValueAtTime(freq, now);
+
+            noteG.gain.setValueAtTime(0, now);
+            noteG.gain.linearRampToValueAtTime(1.0, now + 0.005);
+            noteG.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+            osc.connect(noteG);
+            noteG.connect(masterGain);
+
+            osc.start(now);
+            osc.stop(now + duration);
+            now += duration;
+          });
+        } catch (e) { console.warn("Audio blocked:", e); }
+      }
+      click() { this.play([600], [30], "sine"); }
+      eat() { this.play([880, 1320], [60, 80], "square"); }
+      bonusEat() { this.play([523, 659, 783, 1046], [70, 70, 70, 120], "square"); }
+      crash() { this.play([330, 220, 110], [150, 150, 250], "sawtooth"); }
+      levelUp() { this.play([587, 659, 698, 783, 880, 1046], [100, 100, 100, 100, 150, 250], "square"); }
+      chirp() { this.play([987, 1318, 1567], [80, 80, 120], "square"); }
+    }
+    const audio = new WebAudioSynth();
+
+    // --- 2. Mazes and Grid data structures ---
+    const Mazes = [
+      { id: "open", name: "Classic Open", walls: [], hasWrap: true },
+      { id: "box_in_box", name: "Box Labirinth", walls: [
+        // Center box with doors
+        ...genL(10, 5, 17, 5), ...genL(22, 5, 30, 5),
+        ...genL(10, 14, 17, 14), ...genL(22, 14, 30, 14),
+        ...genL(10, 6, 10, 8), ...genL(10, 11, 10, 13),
+        ...genL(30, 6, 30, 8), ...genL(30, 11, 30, 13)
+      ], hasWrap: true },
+      { id: "tunnels", name: "Dual Tunnels", walls: [
+        ...genL(6, 5, 33, 5), ...genL(6, 14, 33, 14), ...genL(19, 8, 20, 11)
+      ], hasWrap: true },
+      { id: "pillars", name: "Corner Columns", walls: [
+        ...genL(8, 4, 11, 6), ...genL(28, 4, 31, 6),
+        ...genL(8, 13, 11, 15), ...genL(28, 13, 31, 15),
+        ...genL(18, 9, 21, 10)
+      ], hasWrap: true }
+    ];
+
+    function genL(x1, y1, x2, y2) {
+      const line = [];
+      const sx = Math.min(x1, x2), ex = Math.max(x1, x2);
+      const sy = Math.min(y1, y2), ey = Math.max(y1, y2);
+      for (let x = sx; x <= ex; x++) {
+        for (let y = sy; y <= ey; y++) {
+          line.push({ x, y });
+        }
+      }
+      return line;
+    }
+
+    // --- 3. Game Engine and Core Variables ---
+    const CANVAS_W = 160;
+    const CANVAS_H = 80;
+    const COLS = 40;
+    const ROWS = 20;
+    const BLOCK_S = 4;
+
+    let gameState = "START_MENU"; // START_MENU, PLAYING, PAUSED, GAME_OVER, HIGHSCORES, SETTINGS, HOW_TO_PLAY, MAZE_SELECT
+    let activeMode = "SPEED_UP"; // SPEED_UP, CLOSED_BOX, MAZES
+    let activeMazeIdx = 0;
+    let initialSpeed = 3;
+    let currentSpeed = 3;
+    let score = 0;
+    let foodsEaten = 0;
+    let isLiveHighScoreAwarded = false;
+    let highScoreName = "MUNEEB";
+    let t9Index = 0;
+
+    let isLcdOn = true;
+    let loopId = null;
+    let animRequest = null;
+    let frameTick = 0;
+
+    // Snake physical coordinates
+    let snake = [];
+    let direction = "RIGHT";
+    let nextDirection = "RIGHT";
+    let food = { x: 15, y: 10 };
+    let bonusFood = null;
+    let bonusTimer = 0;
+    const bonusMaxSec = 25;
+
+    // Menu offsets
+    let menuCursor = 0;
+    let settingsCursor = 0;
+
+    // Canvas pointers
+    let canvas, ctx;
+
+    window.onload = function() {
+      canvas = document.getElementById("lcd-canvas");
+      ctx = canvas.getContext("2d");
+      
+      // Load scores
+      loadHighScores();
+      
+      // Initiate Render loop
+      animate();
+
+      // Boot chime play timer
+      setTimeout(() => {
+        audio.levelUp();
+      }, 1000);
+
+      // Keyboard listener
+      window.addEventListener("keydown", function(e) {
+        let action = null;
+        switch (e.key) {
+          case "ArrowUp": action = "UP"; break;
+          case "ArrowDown": action = "DOWN"; break;
+          case "ArrowLeft": action = "LEFT"; break;
+          case "ArrowRight": action = "RIGHT"; break;
+          case "Enter":
+          case " ": action = "ENTER"; break;
+          case "Backspace":
+          case "Escape": action = "BACK"; break;
+        }
+        if (action) {
+          e.preventDefault();
+          triggerKeyAction(action);
+        }
+      });
+    };
+
+    // Standard high scores list array
+    let highscores = [];
+    function loadHighScores() {
+      try {
+        const stored = localStorage.getItem("nokia-snake-highscores");
+        if (stored) {
+          highscores = JSON.parse(stored);
+        } else {
+          highscores = [
+            { name: "NOKIA", score: 600, mode: "SPEED_UP", date: "2026-06-09" },
+            { name: "3310", score: 400, mode: "SPEED_UP", date: "2026-06-09" },
+            { name: "EMUL", score: 200, mode: "CLOSED_BOX", date: "2026-06-09" }
+          ];
+        }
+        renderHighScoresSidebar();
+      } catch (e) { console.error(e); }
+    }
+
+    // Save and commit highscore
+    function saveAndRegisterScore() {
+      try {
+        audio.levelUp();
+        const scoreEntry = {
+          name: highScoreName || "SNAKE",
+          score: score,
+          mode: activeMode,
+          date: new Date().toISOString().split("T")[0]
+        };
+        highscores.push(scoreEntry);
+        highscores.sort((a,b) => b.score - a.score);
+        highscores = highscores.slice(0, 8);
+        localStorage.setItem("nokia-snake-highscores", JSON.stringify(highscores));
+        
+        loadHighScores(); // refresh lists
+        isLiveHighScoreAwarded = false;
+        gameState = "START_MENU";
+      } catch(e) {}
+    }
+
+    function renderHighScoresSidebar() {
+      const container = document.getElementById("highscores-list");
+      if (!container) return;
+      container.innerHTML = "";
+      highscores.slice(0, 4).forEach((hs) => {
+        const div = document.createElement("div");
+        div.className = "flex justify-between border-b border-slate-850 pb-1";
+        div.innerHTML = `<span class="font-bold text-slate-400">🏆 ${hs.name}</span><span class="font-bold text-white">${hs.score} <span class="text-[9px] text-slate-500 font-normal">(${hs.mode})</span></span>`;
+        container.appendChild(div);
+      });
+    }
+
+    // Spawn valid foods
+    function getSafeSpawn(forbidden) {
+      let attempts = 0;
+      const currentMaze = Mazes[activeMazeIdx];
+      while (attempts < 400) {
+        const col = Math.floor(Math.random() * COLS);
+        const row = Math.floor(Math.random() * ROWS);
+        
+        const ok = !forbidden.some(s => s.x === col && s.y === row) &&
+                   !currentMaze.walls.some(w => w.x === col && w.y === row);
+        if (ok) return { x: col, y: row };
+        attempts++;
+      }
+      return { x: 4, y: 4 };
+    }
+
+    function resetGame() {
+      snake = [ { x: 12, y: 10 }, { x: 11, y: 10 }, { x: 10, y: 10 } ];
+      direction = "RIGHT";
+      nextDirection = "RIGHT";
+      score = 0;
+      foodsEaten = 0;
+      currentSpeed = initialSpeed;
+      bonusFood = null;
+      bonusTimer = 0;
+      isLiveHighScoreAwarded = false;
+
+      food = getSafeSpawn([...snake]);
+      gameState = "PLAYING";
+      
+      triggerLoopPhysics();
+    }
+
+    // Physical physics updates
+    function triggerLoopPhysics() {
+      if (gameState !== "PLAYING") return;
+
+      direction = nextDirection;
+      const head = { ...snake[0] };
+
+      switch (direction) {
+        case "UP": head.y -= 1; break;
+        case "DOWN": head.y += 1; break;
+        case "LEFT": head.x -= 1; break;
+        case "RIGHT": head.x += 1; break;
+      }
+
+      // Wraps
+      const hasWrap = activeMode !== "CLOSED_BOX";
+      if (hasWrap) {
+        if (head.x < 0) head.x = COLS - 1;
+        else if (head.x >= COLS) head.x = 0;
+        if (head.y < 0) head.y = ROWS - 1;
+        else if (head.y >= ROWS) head.y = 0;
+      } else {
+        // Closed box collision
+        if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+          triggerDeath();
+          return;
+        }
+      }
+
+      // Wall crash
+      const currentMaze = Mazes[activeMazeIdx];
+      if (currentMaze.walls.some(w => w.x === head.x && w.y === head.y)) {
+        triggerDeath();
+        return;
+      }
+
+      // Self collision
+      if (snake.slice(0, -1).some(s => s.x === head.x && s.y === head.y)) {
+        triggerDeath();
+        return;
+      }
+
+      // Eating mechanics
+      const newSnake = [head, ...snake];
+      const eatReg = head.x === food.x && head.y === food.y;
+      let eatBonus = bonusFood && head.x === bonusFood.x && head.y === bonusFood.y;
+
+      if (eatReg) {
+        audio.eat();
+        const basePts = currentSpeed * 10;
+        score += basePts;
+        
+        food = getSafeSpawn([...newSnake]);
+        foodsEaten++;
+
+        if (foodsEaten % 5 === 0) {
+          bonusFood = getSafeSpawn([...newSnake, food]);
+          bonusTimer = bonusMaxSec;
+          audio.chirp();
+        }
+
+        if (activeMode === "SPEED_UP") {
+          currentSpeed = Math.min(10, Math.floor(score / 100) + initialSpeed);
+        }
+      } else if (eatBonus) {
+        audio.bonusEat();
+        score += bonusTimer * currentSpeed * 3;
+        bonusFood = null;
+        bonusTimer = 0;
+      } else {
+        newSnake.pop();
+      }
+
+      snake = newSnake;
+
+      if (bonusFood) {
+        bonusTimer--;
+        if (bonusTimer <= 0) bonusFood = null;
+      }
+
+      // Schedule next physical step
+      const tickDuration = 180 - ((currentSpeed - 1) / 9) * 145;
+      setTimeout(triggerLoopPhysics, tickDuration);
+    }
+
+    function triggerDeath() {
+      audio.crash();
+      const eligible = highscores.length < 5 || score > (highscores[highscores.length-1]?.score || 0);
+      if (eligible && score > 0) {
+        isLiveHighScoreAwarded = true;
+        highScoreName = "SNAKE";
+        t9Index = 0;
+      }
+      gameState = "GAME_OVER";
+    }
+
+    // Functional inputs processing
+    function triggerKeyAction(act) {
+      audio.click();
+
+      if (gameState === "START_MENU") {
+        if (act === "UP") menuCursor = (menuCursor - 1 + 5) % 5;
+        else if (act === "DOWN") menuCursor = (menuCursor + 1) % 5;
+        else if (act === "ENTER" || act === "SOFT_LEFT") {
+          const selectMap = {
+            0: "PLAY",
+            1: "MAZE",
+            2: "SETTINGS",
+            3: "HIGHSCORES",
+            4: "HELP"
+          };
+          const selected = selectMap[menuCursor];
+          if (selected === "PLAY") {
+            resetGame();
+          } else if (selected === "MAZE") {
+            gameState = "MAZE_SELECT";
+          } else if (selected === "SETTINGS") {
+            gameState = "SETTINGS";
+          } else if (selected === "HIGHSCORES") {
+            gameState = "HIGHSCORES";
+          } else if (selected === "HELP") {
+            gameState = "HOW_TO_PLAY";
+          }
+        }
+      } else if (gameState === "PLAYING") {
+        if (act === "UP" && direction !== "DOWN") nextDirection = "UP";
+        else if (act === "DOWN" && direction !== "UP") nextDirection = "DOWN";
+        else if (act === "LEFT" && direction !== "RIGHT") nextDirection = "LEFT";
+        else if (act === "RIGHT" && direction !== "LEFT") nextDirection = "RIGHT";
+        else if (act === "ENTER" || act === "SOFT_LEFT") gameState = "PAUSED";
+        else if (act === "BACK" || act === "SOFT_RIGHT") gameState = "START_MENU";
+      } else if (gameState === "PAUSED") {
+        if (act === "ENTER" || act === "SOFT_LEFT") {
+          gameState = "PLAYING";
+          triggerLoopPhysics();
+        } else if (act === "BACK" || act === "SOFT_RIGHT") {
+          gameState = "START_MENU";
+        }
+      } else if (gameState === "MAZE_SELECT") {
+        if (act === "LEFT") activeMazeIdx = (activeMazeIdx - 1 + Mazes.length) % Mazes.length;
+        else if (act === "RIGHT") activeMazeIdx = (activeMazeIdx + 1) % Mazes.length;
+        else if (act === "UP" || act === "DOWN") {
+          const ruleModes = ["SPEED_UP", "CLOSED_BOX", "MAZES"];
+          const currIdx = ruleModes.indexOf(activeMode);
+          const nextIdx = (currIdx + (act === "DOWN" ? 1 : -1) + 3) % 3;
+          activeMode = ruleModes[nextIdx];
+        } else if (act === "ENTER" || act === "SOFT_LEFT") {
+          resetGame();
+        } else if (act === "BACK" || act === "SOFT_RIGHT") {
+          gameState = "START_MENU";
+        }
+      } else if (gameState === "SETTINGS") {
+        const rows = 4;
+        if (act === "UP") settingsCursor = (settingsCursor - 1 + rows) % rows;
+        else if (act === "DOWN") settingsCursor = (settingsCursor + 1) % rows;
+        else if (act === "LEFT") {
+          if (settingsCursor === 0) initialSpeed = Math.max(1, initialSpeed - 1);
+          else if (settingsCursor === 1) audio.volumeLevel = Math.max(0, audio.volumeLevel - 1);
+          else if (settingsCursor === 2) audio.enabled = !audio.enabled;
+          else if (settingsCursor === 3) toggleGangsBacklight();
+        } else if (act === "RIGHT" || act === "ENTER") {
+          if (settingsCursor === 0) initialSpeed = Math.min(10, initialSpeed + 1);
+          else if (settingsCursor === 1) audio.volumeLevel = Math.min(5, audio.volumeLevel + 1);
+          else if (settingsCursor === 2) audio.enabled = !audio.enabled;
+          else if (settingsCursor === 3) toggleGangsBacklight();
+        } else if (act === "BACK" || act === "SOFT_RIGHT") {
+          gameState = "START_MENU";
+        }
+      } else if (gameState === "GAME_OVER") {
+        if (isLiveHighScoreAwarded) {
+          if (act === "LEFT") t9Index = Math.max(0, t9Index - 1);
+          else if (act === "RIGHT") t9Index = Math.min(5, t9Index + 1);
+          else if (act === "ENTER" || act === "SOFT_LEFT") saveAndRegisterScore();
+          else if (act === "SOFT_RIGHT" || act === "BACK") {
+            const arr = highScoreName.split("");
+            arr[t9Index] = " ";
+            highScoreName = arr.join("");
+          }
+        } else {
+          if (act === "ENTER" || act === "SOFT_LEFT") resetGame();
+          else if (act === "BACK" || act === "SOFT_RIGHT") gameState = "START_MENU";
+        }
+      } else {
+        // Help, High Scores screens
+        if (act === "ENTER" || act === "SOFT_LEFT" || act === "BACK" || act === "SOFT_RIGHT") {
+          gameState = "START_MENU";
+        }
+      }
+    }
+
+    // T9 click inputs
+    let t9Key = null, t9Presses = 0, t9Timout = null;
+    const T9_ALPH = {
+      "2": ["A", "B", "C", "2"], "3": ["D", "E", "F", "3"], "4": ["G", "H", "I", "4"],
+      "5": ["J", "K", "L", "5"], "6": ["M", "N", "O", "6"], "7": ["P", "Q", "R", "S", "7"],
+      "8": ["T", "U", "V", "8"], "9": ["W", "X", "Y", "Z", "9"], "0": [" ", "0"]
+    };
+
+    function handleKeyClick(key) {
+      if (gameState !== "GAME_OVER" || !isLiveHighScoreAwarded) return;
+      audio.click();
+
+      if (T9_ALPH[key]) {
+        const chars = T9_ALPH[key];
+        if (t9Key === key) t9Presses = (t9Presses + 1) % chars.length;
+        else { t9Key = key; t9Presses = 0; }
+
+        const arr = highScoreName.split("");
+        arr[t9Index] = chars[t9Presses];
+        highScoreName = arr.slice(0,6).join("");
+
+        if (t9Timout) clearTimeout(t9Timout);
+        t9Timout = setTimeout(() => {
+          t9Index = Math.min(5, t9Index + 1);
+          t9Key = null; t9Presses = 0;
+        }, 1000);
+      }
+    }
+
+    function handleKeyDirection(key, dir) {
+      handleKeyClick(key);
+      triggerKeyAction(dir);
+    }
+
+    // --- 4. Render Canvas Frames (160x80) ---
+    function animate() {
+      frameTick++;
+      ctx.fillStyle = isLcdOn ? "#9cbd0f" : "#c2ccb1";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      const colorActive = isLcdOn ? "#1a2408" : "#334155";
+      const colorShadow = "rgba(26,36,8,0.15)";
+      const colorOffBg = isLcdOn ? "#9cbd0f" : "#c2ccb1";
+
+      ctx.fillStyle = colorActive;
+      ctx.strokeStyle = colorActive;
+
+      // START_MENU Draw
+      if (gameState === "START_MENU") {
+        ctx.font = "5.5px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("🐍 SNAKE II 🐍", CANVAS_W / 2, 10);
+        ctx.strokeRect(0, 14, CANVAS_W, 0.5);
+
+        const items = ["1. PLAY GAME", "2. SELECT MAZE", "3. SETTINGS", "4. HIGH SCORES", "5. HOW TO PLAY"];
+        ctx.font = "6.5px 'Press Start 2P'";
+        ctx.fillText(items[menuCursor], CANVAS_W / 2, 45);
+
+        let dots = "";
+        for (let i = 0; i < 5; i++) dots += i === menuCursor ? "●" : "○";
+        ctx.font = "8px 'Press Start 2P'";
+        ctx.fillText(dots, CANVAS_W / 2, 68);
+
+      } else if (gameState === "SETTINGS") {
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("⚙️ SETTINGS", CANVAS_W / 2, 10);
+        ctx.strokeRect(4, 13, CANVAS_W - 8, 0.5);
+
+        const text = [
+          `1. SPEED :  < ${initialSpeed} >`,
+          `2. VOLUME : < ${audio.volumeLevel} >`,
+          `3. SOUNDS : < ${audio.enabled ? "ON" : "OFF"} >`,
+          `4. THEME :  < OK CHANGE >`
+        ];
+
+        ctx.font = "4.5px 'Press Start 2P'";
+        ctx.textAlign = "left";
+        text.forEach((txt, i) => {
+          if (settingsCursor === i) {
+            ctx.fillRect(4, 18 + i * 14, CANVAS_W - 8, 10);
+            ctx.fillStyle = colorOffBg;
+            ctx.fillText("> " + txt, 8, 25 + i * 14);
+            ctx.fillStyle = colorActive;
+          } else {
+            ctx.fillText("  " + txt, 8, 25 + i * 14);
+          }
+        });
+
+      } else if (gameState === "MAZE_SELECT") {
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("🧱 SELECT LEVEL", CANVAS_W / 2, 11);
+        ctx.strokeRect(4, 15, CANVAS_W - 8, 0.5);
+
+        ctx.font = "5.5px 'Press Start 2P'";
+        ctx.fillText(`< ${Mazes[activeMazeIdx].name} >`, CANVAS_W / 2, 30);
+        ctx.font = "4.5px 'Press Start 2P'";
+        ctx.fillText(`RULESET: ${activeMode.replace("_", " ")}`, CANVAS_W / 2, 42);
+
+        // Preview rendering
+        ctx.strokeRect(CANVAS_W/2 - 25, 48, 50, 22);
+        ctx.fillStyle = colorActive;
+        const scaleX = 50 / COLS, scaleY = 22 / ROWS;
+        const oX = CANVAS_W/2 - 25, oY = 48;
+
+        Mazes[activeMazeIdx].walls.forEach(p => {
+          ctx.fillRect(oX + p.x * scaleX, oY + p.y * scaleY, scaleX, scaleY);
+        });
+        if (activeMode === "CLOSED_BOX") {
+          ctx.strokeRect(oX + 0.8, oY + 0.8, 48.4, 20.4);
+        }
+
+      } else if (gameState === "PLAYING" || gameState === "PAUSED") {
+        // Boundary indicators & HUD text
+        ctx.strokeRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.strokeRect(0, 8, CANVAS_W, 0.5);
+
+        ctx.font = "5.5px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText(`SCORE: ${score}`, CANVAS_W / 2, 6);
+
+        // Signal fluctuate
+        ctx.fillRect(4, 5, 2, 1);
+        ctx.fillRect(8, 4, 2, 2);
+        ctx.fillRect(12, 3, 2, 3);
+        ctx.fillRect(16, 2, 2, 4);
+
+        // Battery bars
+        ctx.strokeRect(CANVAS_W - 14, 2, 10, 5);
+        ctx.fillRect(CANVAS_W - 12, 3, 6, 3);
+
+        const yOff = 8;
+        const bH = CANVAS_H - yOff;
+        const bY = bH / ROWS;
+
+        if (activeMode === "CLOSED_BOX") {
+          ctx.strokeRect(0, yOff, CANVAS_W, bH);
+        }
+
+        // Render Walls
+        ctx.fillStyle = colorActive;
+        Mazes[activeMazeIdx].walls.forEach(w => {
+          ctx.fillRect(w.x * BLOCK_S, yOff + w.y * bY, BLOCK_S - 0.8, bY - 0.8);
+        });
+
+        // Food
+        ctx.fillRect(food.x * BLOCK_S + 0.8, yOff + food.y * bY + 0.8, BLOCK_S - 1.6, bY - 1.6);
+
+        // Bonus Food
+        if (bonusFood && Math.floor(frameTick / 8) % 2 === 0) {
+          ctx.fillRect(bonusFood.x * BLOCK_S, yOff + bonusFood.y * bY, BLOCK_S, bY);
+          ctx.strokeRect(CANVAS_W/2 - 10, 6, 20, 1);
+          ctx.fillRect(CANVAS_W/2 - 10, 6, 20 * (bonusTimer / bonusMaxSec), 1);
+        }
+
+        // Snake
+        snake.forEach((s, idx) => {
+          ctx.fillStyle = colorActive;
+          const sx = s.x * BLOCK_S;
+          const sy = yOff + s.y * bY;
+          ctx.fillRect(sx, sy, BLOCK_S - 0.8, bY - 0.8);
+          
+          if (idx === 0) {
+            ctx.fillStyle = colorOffBg;
+            ctx.fillRect(sx + 1.2, sy + 1.2, 0.8, 0.8); // eye helper
+          }
+        });
+
+        if (gameState === "PAUSED") {
+          ctx.fillStyle = colorOffBg;
+          ctx.fillRect(25, 28, 110, 24);
+          ctx.strokeRect(25, 28, 110, 24);
+          ctx.fillStyle = colorActive;
+          ctx.font = "7px 'Press Start 2P'";
+          ctx.fillText("PAUSED", CANVAS_W / 2, 43);
+        }
+
+      } else if (gameState === "GAME_OVER") {
+        ctx.font = "8px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", CANVAS_W / 2, 20);
+        ctx.font = "6px 'Press Start 2P'";
+        ctx.fillText(`SCORE: ${score}`, CANVAS_W / 2, 35);
+
+        if (isLiveHighScoreAwarded) {
+          ctx.font = "4.5px 'Press Start 2P'";
+          ctx.fillText("🎉 NEW HIGH RECORD! 🎉", CANVAS_W / 2, 46);
+          
+          const boxStartX = CANVAS_W / 2 - (6 * 10) / 2;
+          for (let i = 0; i < 6; i++) {
+            const letter = highScoreName[i] || " ";
+            const rx = boxStartX + i * 10;
+            if (t9Index === i && Math.floor(frameTick / 15) % 2 === 0) {
+              ctx.fillRect(rx, 54, 8, 9);
+              ctx.fillStyle = colorOffBg;
+              ctx.font = "6px 'Press Start 2P'";
+              ctx.fillText(letter, rx + 4, 61);
+              ctx.fillStyle = colorActive;
+            } else {
+              ctx.strokeRect(rx, 54, 8, 9);
+              ctx.font = "6px 'Press Start 2P'";
+              ctx.fillText(letter, rx + 4, 61);
+            }
+          }
+          ctx.font = "3.5px 'Press Start 2P'";
+          ctx.fillText("OK / 5 KEY TO COMMIT AND STORE", CANVAS_W / 2, 75);
+        } else {
+          ctx.font = "4px 'Press Start 2P'";
+          ctx.fillText("SOFT LEFT KEYS TO RETRY", CANVAS_W / 2, 52);
+          ctx.fillText("SOFT RIGHT KEYS FOR MENU", CANVAS_W / 2, 64);
+        }
+
+      } else if (gameState === "HOW_TO_PLAY") {
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("❓ TUTORIALS HELP", CANVAS_W / 2, 11);
+        ctx.strokeRect(4, 15, CANVAS_W - 8, 0.5);
+
+        ctx.font = "4px 'Press Start 2P'";
+        ctx.textAlign = "left";
+        ctx.fillText("• MOVEMENTS: ARROWS / WASD", 6, 28);
+        ctx.fillText("  OR CLICKS OF KEYPADS 2,4,6,8.", 6, 36);
+        ctx.fillText("• RULE: EAT MUNCHIES TO PROGRESS.", 6, 46);
+        ctx.fillText("• THREATS: CRASHING BOUNDARIES", 6, 56);
+        ctx.fillText("  AND SELF BODY CRASH COLD END.", 6, 64);
+
+        ctx.textAlign = "center";
+        ctx.font = "3.5px 'Press Start 2P'";
+        ctx.fillText("PRESS ANY MOBILE KEY TO RETURN", CANVAS_W / 2, 76);
+
+      } else if (gameState === "HIGHSCORES") {
+        ctx.font = "5px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("🏆 HALL OF FAME RECORD", CANVAS_W / 2, 11);
+        ctx.strokeRect(4, 15, CANVAS_W - 8, 0.5);
+
+        ctx.font = "4px 'Press Start 2P'";
+        ctx.textAlign = "left";
+        const list = highscores.slice(0, 4);
+        if (list.length === 0) {
+          ctx.textAlign = "center";
+          ctx.fillText("NO HIGH RATIOS SIGNED YET", CANVAS_W / 2, 36);
+        } else {
+          list.forEach((hs, i) => {
+            ctx.fillText(`${i + 1}.`, 10, 26 + i * 11);
+            ctx.font = "5.5px 'Press Start 2P'";
+            ctx.fillText(hs.name, 22, 26 + i * 11);
+            ctx.font = "4px 'Press Start 2P'";
+            ctx.textAlign = "right";
+            ctx.fillText(`${hs.score}p`, CANVAS_W - 45, 26 + i * 11);
+            ctx.fillText(hs.date, CANVAS_W - 10, 26 + i * 11);
+            ctx.textAlign = "left";
+          });
+        }
+        ctx.textAlign = "center";
+        ctx.font = "3.5px 'Press Start 2P'";
+        ctx.fillText("PRESS RESET OR BACK KEYS TO ESC", CANVAS_W / 2, 76);
+      }
+
+      animRequest = requestAnimationFrame(animate);
+    }
+
+    // Backlight adjuster
+    function toggleBacklight() {
+      audio.click();
+      isLcdOn = document.getElementById("lcd-power-chk").checked;
+    }
+
+    // Static theme adjusters
+    const SHELL_COLORS = {
+      classic: "bg-slate-700 border-slate-800 shadow-slate-900/50",
+      cyan: "bg-cyan-800 border-cyan-900 shadow-cyan-950/50",
+      ruby: "bg-rose-900 border-rose-950 shadow-rose-950/50",
+      cyber: "bg-fuchsia-950 border-fuchsia-900 shadow-fuchsia-950/50"
+    };
+
+    function setShellStyle(id) {
+      audio.click();
+      const card = document.getElementById("phone-case");
+      card.className = "p-6 md:p-7 rounded-[44px] border-4 flex flex-col items-center w-[320px] md:w-[350px] transition-all " + SHELL_COLORS[id];
+    }
+
+    const LCD_COLORS = {
+      green: "#9cbd0f",
+      amber: "#f8a020",
+      cyan: "#40d0e0",
+      dark: "#111827"
+    };
+
+    function setLcdStyle(id) {
+      audio.click();
+      isLcdOn = true;
+      document.getElementById("lcd-power-chk").checked = true;
+      
+      const box = document.getElementById("lcd-screen");
+      box.style.backgroundColor = LCD_COLORS[id];
+      if (id === "dark") {
+        box.style.boxShadow = "0 0 12px rgba(96, 165, 250, 0.35)";
+      } else if (id === "cyan") {
+        box.style.boxShadow = "0 0 12px rgba(64, 208, 224, 0.45)";
+      } else if (id === "amber") {
+        box.style.boxShadow = "0 0 12px rgba(248, 160, 32, 0.45)";
+      } else {
+        box.style.boxShadow = "0 0 12px rgba(156, 189, 15, 0.45)";
+      }
+    }
+
+    function toggleGangsBacklight() {
+      isLcdOn = !isLcdOn;
+      document.getElementById("lcd-power-chk").checked = isLcdOn;
+    }
+
+    function rebootPhone() {
+      audio.levelUp();
+      gameState = "START_MENU";
+    }
+
+    function toggleAudio() {
+      audio.enabled = !audio.enabled;
+      document.getElementById("header-audio-icon").innerText = audio.enabled ? "🔊" : "🔇";
+      audio.click();
+    }
+  </script>
+</body>
+</html>
