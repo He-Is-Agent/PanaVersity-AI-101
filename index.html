@@ -1,2 +1,111 @@
-<a href="Lecture-2-Assignments/Snake-II-Retro/">Snake Game</a>
-<a href="Lecture-4-Assignments/App/">App</a>
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Projects</title>
+
+```
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+    }
+
+    body {
+        background: #0f172a;
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        width: 90%;
+        max-width: 900px;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+
+    p {
+        color: #cbd5e1;
+        margin-bottom: 40px;
+    }
+
+    .projects {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .card {
+        background: #1e293b;
+        padding: 25px;
+        border-radius: 12px;
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+    .card h2 {
+        margin-bottom: 10px;
+    }
+
+    .card p {
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        display: inline-block;
+        text-decoration: none;
+        background: #3b82f6;
+        color: white;
+        padding: 10px 18px;
+        border-radius: 8px;
+    }
+
+    .btn:hover {
+        background: #2563eb;
+    }
+</style>
+```
+
+</head>
+<body>
+
+<div class="container">
+    <h1>My Web Projects</h1>
+    <p>Explore my assignments and applications hosted on GitHub Pages.</p>
+
+```
+<div class="projects">
+
+    <div class="card">
+        <h2>🐍 Snake Game</h2>
+        <p>Retro-style Snake game built with HTML, CSS, and JavaScript.</p>
+        <a class="btn" href="Lecture-2-Assignments/Snake-II-Retro/">Play Game</a>
+    </div>
+
+    <div class="card">
+        <h2>📱 App Project</h2>
+        <p>Interactive web application developed during Lecture 4 assignments.</p>
+        <a class="btn" href="Lecture-4-Assignments/App/">Open App</a>
+    </div>
+
+</div>
+```
+
+</div>
+
+</body>
+</html>
