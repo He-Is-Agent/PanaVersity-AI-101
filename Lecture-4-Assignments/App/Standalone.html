@@ -1,423 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hardware Correlation For Local AI Model Deployment</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline Hardware Correlation For Local AI Model Deployment</title>
   
-  <!-- CSS Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind Play CDN v3 -->
+  <!-- CSS Stylesheets -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- React & ReactDOM 18 -->
-  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" crossorigin></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
-  
-  <!-- Babel Standalone compiler -->
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.20/babel.min.js" crossorigin></script>
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Tailwind Theme Configurations -->
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            serif: ["'EB Garamond'", 'serif'],
-            sans: ["'Inter'", 'ui-sans-serif', 'system-ui', 'sans-serif'],
-            display: ["'EB Garamond'", 'serif'],
-            mono: ["'JetBrains Mono'", 'ui-monospace', 'SFMono-Regular', 'monospace'],
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
           }
         }
       }
     }
   </script>
 
-  <style type="text/css">
+  <style>
     body {
-      background-color: #FDFCFB;
+      background-color: #F9F7F2;
       color: #1A1A1A;
     }
-    .editorial-border-double {
-      border-bottom: 4px double #E5E2DD;
-    }
-    .editorial-sep {
-      border-top: 1px solid #E5E2DD;
-      border-bottom: 1px solid #E5E2DD;
-      height: 3px;
-      margin-top: 4px;
-      margin-bottom: 4px;
-    }
-    /* Simple modern custom scrollbar */
+    /* Minimal scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #F9F7F2;
+      background: #F2EFE9;
     }
     ::-webkit-scrollbar-thumb {
-      background: #8C8881;
-      border-radius: 0px;
+      background: #D8D4CC;
+      border-radius: 3px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #1A1A1A;
+      background: #C4BFB4;
     }
   </style>
 </head>
-<body class="min-h-screen text-[#1A1A1A] font-sans bg-[#FDFCFB]">
+<body class="selection:bg-neutral-200 selection:text-neutral-900 leading-normal antialiased">
+  <div id="root"></div>
 
-  <div id="root">
-    <!-- Fallback loading indicator -->
-    <div class="flex flex-col items-center justify-center min-h-screen p-8 text-center bg-[#FDFCFB]">
-      <div class="font-serif text-2xl italic text-[#1A1A1A] animate-pulse">
-        Initializing Inference Matrices...
-      </div>
-      <div class="mt-2 text-xs font-mono text-[#8C8881] uppercase tracking-widest">
-        Loading Standalone Core
-      </div>
-    </div>
-  </div>
-
-  <!-- BABEL REACT SCRIPT BLOCK -->
   <script type="text/babel">
     const { useState, useMemo } = React;
 
-    // --- EMBEDDED DATABASES ---
+    // ==================== COMPLETE MODELS DATABASE ====================
     const MODELS = [
-      {
-        id: 'deepseek-r1',
-        name: 'DeepSeek-R1',
-        developer: 'DeepSeek',
-        params: 671,
-        type: 'moe',
-        activeParams: 37,
-        releaseDate: '2025-01',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-R1',
-        description: 'First-tier open reasoning model with performance matching GPT-4o and o1. Features specialized multi-step chain-of-thought system.',
-        metrics: { mmlu: 90.8, gsm8k: 96.3, humanEval: 92.8, gpqa: 59.1, mathScore: 93.1 },
-        category: 'Reasoning',
-        license: 'MIT',
-        recommendedQuant: 'Q4_K_M (requires ~400GB total memory)'
-      },
-      {
-        id: 'deepseek-v3',
-        name: 'DeepSeek-V3',
-        developer: 'DeepSeek',
-        params: 671,
-        type: 'moe',
-        activeParams: 37,
-        releaseDate: '2024-12',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-V3',
-        description: 'High-performance Mixture of Experts (MoE) LLM leveraging Multi-Head Latent Attention (MLA) and DeepSeekMoE architectures.',
-        metrics: { mmlu: 88.5, gsm8k: 94.9, humanEval: 82.6, gpqa: 41.5, mathScore: 68.4 },
-        category: 'General',
-        license: 'MIT',
-        recommendedQuant: 'Q4_K_M (requires ~400GB total memory)'
-      },
-      {
-        id: 'llama-3.3-70b',
-        name: 'Llama 3.3 70B Instruct',
-        developer: 'Meta',
-        params: 70,
-        type: 'dense',
-        releaseDate: '2024-12',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct',
-        description: 'Highly capable dense model replacing Llama 3.1 70B, trained on upgraded datasets showing superior safety and coding capability.',
-        metrics: { mmlu: 88.6, gsm8k: 93.8, humanEval: 84.1, gpqa: 41.1, mathScore: 59.4 },
-        category: 'General',
-        license: 'Llama 3.3 Community',
-        recommendedQuant: 'Q4_K_M (requires ~43GB memory)'
-      },
-      {
-        id: 'phi-4-14b',
-        name: 'Phi-4 14B',
-        developer: 'Microsoft',
-        params: 14,
-        type: 'dense',
-        releaseDate: '2024-12',
-        contextLength: 16384,
-        huggingFaceUrl: 'https://huggingface.co/microsoft/phi-4',
-        description: 'Next-gen compact model with strong scientific and mathematical reasoning, leveraging high-quality synthetic datasets.',
-        metrics: { mmlu: 79.8, gsm8k: 92.4, humanEval: 82.3, gpqa: 39.5, mathScore: 64.9 },
-        category: 'Reasoning',
-        license: 'MIT',
-        recommendedQuant: 'Q8_0 or Q5_K_M (requires ~10-15GB memory)'
-      },
-      {
-        id: 'qwen-2.5-72b',
-        name: 'Qwen 2.5 72B Instruct',
-        developer: 'Qwen',
-        params: 72,
-        type: 'dense',
-        releaseDate: '2024-09',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/Qwen/Qwen2.5-72B-Instruct',
-        description: 'One of the top-performing non-reasoning dense models in existence, boasting incredible coding and multilingual support.',
-        metrics: { mmlu: 85.3, gsm8k: 92.2, humanEval: 86.6, gpqa: 41.2, mathScore: 63.5 },
-        category: 'General',
-        license: 'Apache-2.0',
-        recommendedQuant: 'Q4_K_M (requires ~44GB memory)'
-      },
-      {
-        id: 'qwen-2.5-coder-32b',
-        name: 'Qwen 2.5 Coder 32B Instruct',
-        developer: 'Qwen',
-        params: 32,
-        type: 'dense',
-        releaseDate: '2024-11',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct',
-        description: 'The premier open-source model specialized in coding. Matches or beats larger generalist models on a suite of code benchmarks.',
-        metrics: { mmlu: 81.3, gsm8k: 88.3, humanEval: 90.2, gpqa: 32.1, mathScore: 56.4 },
-        category: 'Coding',
-        license: 'Apache-2.0',
-        recommendedQuant: 'Q5_K_M (requires ~24GB memory)'
-      },
-      {
-        id: 'gemma-2-27b',
-        name: 'Gemma 2 27B IT',
-        developer: 'Google',
-        params: 27,
-        type: 'dense',
-        releaseDate: '2024-06',
-        contextLength: 8192,
-        huggingFaceUrl: 'https://huggingface.co/google/gemma-2-27b-it',
-        description: 'Highly efficient model employing sliding-window attention and knowledge distillation. Strikes an incredible performance-per-watt balance.',
-        metrics: { mmlu: 81.2, gsm8k: 84.8, humanEval: 72.0, gpqa: 36.8, mathScore: 43.1 },
-        category: 'General',
-        license: 'Gemma Terms of Use',
-        recommendedQuant: 'Q8_0 or Q5_K_M'
-      },
-      {
-        id: 'llama-3.1-8b',
-        name: 'Llama 3.1 8B Instruct',
-        developer: 'Meta',
-        params: 8,
-        type: 'dense',
-        releaseDate: '2024-07',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct',
-        description: 'The standard multi-utility model for local setups. Exceptional general performance and supports ultra-long contexts.',
-        metrics: { mmlu: 68.4, gsm8k: 81.5, humanEval: 62.2, gpqa: 25.1, mathScore: 30.1 },
-        category: 'General',
-        license: 'Llama 3.1 Community',
-        recommendedQuant: 'Q8_0 or Q5_K_M (requires 6-10GB memory)'
-      },
-      {
-        id: 'qwen-2.5-14b',
-        name: 'Qwen 2.5 14B Instruct',
-        developer: 'Qwen',
-        params: 14,
-        type: 'dense',
-        releaseDate: '2024-09',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/Qwen/Qwen2.5-14B-Instruct',
-        description: 'Excellent sweet-spot model, powerful enough for complex tool-use while operating very fast on single consumer GPUs.',
-        metrics: { mmlu: 79.6, gsm8k: 89.1, humanEval: 75.6, gpqa: 32.5, mathScore: 50.8 },
-        category: 'General',
-        license: 'Apache-2.0',
-        recommendedQuant: 'Q8_0 (requires ~16GB memory)'
-      },
-      {
-        id: 'gemma-2-9b',
-        name: 'Gemma 2 9B IT',
-        developer: 'Google',
-        params: 9,
-        type: 'dense',
-        releaseDate: '2024-06',
-        contextLength: 8192,
-        huggingFaceUrl: 'https://huggingface.co/google/gemma-2-9b-it',
-        description: 'Incredible density of capability. Regularly scores higher than models twice its size on reasoning, math, and style benchmarks.',
-        metrics: { mmlu: 74.0, gsm8k: 79.4, humanEval: 65.3, gpqa: 28.5, mathScore: 35.8 },
-        category: 'General',
-        license: 'Gemma Terms of Use',
-        recommendedQuant: 'Q8_0 (requires ~11GB memory)'
-      },
-      {
-        id: 'phi-3.5-mini',
-        name: 'Phi-3.5 Mini Instruct',
-        developer: 'Microsoft',
-        params: 3.8,
-        type: 'dense',
-        releaseDate: '2024-08',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/microsoft/Phi-3.5-mini-instruct',
-        description: 'Ultra-compact model that can run fast on almost any computer or smartphone. Long context support is its superpower.',
-        metrics: { mmlu: 66.8, gsm8k: 73.1, humanEval: 58.5, gpqa: 24.3, mathScore: 28.5 },
-        category: 'Lightweight',
-        license: 'MIT',
-        recommendedQuant: 'Q8_0 (requires ~5GB memory)'
-      },
-      {
-        id: 'deepseek-r1-llama-8b',
-        name: 'DeepSeek-R1-Distill-Llama-8B',
-        developer: 'DeepSeek',
-        params: 8,
-        type: 'dense',
-        releaseDate: '2025-01',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
-        description: 'Llama 3.1 8B fine-tuned with distillation data generated by primary DeepSeek reasoning engines.',
-        metrics: { mmlu: 73.5, gsm8k: 88.9, humanEval: 77.4, gpqa: 32.6, mathScore: 47.5 },
-        category: 'Reasoning',
-        license: 'MIT',
-        recommendedQuant: 'Q8_0 or Q5_K_M (requires ~6.5-9.5GB memory)'
-      },
-      {
-        id: 'deepseek-r1-qwen-32b',
-        name: 'DeepSeek-R1-Distill-Qwen-32B',
-        developer: 'DeepSeek',
-        params: 32,
-        type: 'dense',
-        releaseDate: '2025-01',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
-        description: 'DeepSeek distilled Qwen 2.5 32B model. Highly accurate, capable of very deep reasoning and excels on mathematical/logical tasks.',
-        metrics: { mmlu: 82.6, gsm8k: 94.3, humanEval: 82.1, gpqa: 46.1, mathScore: 70.9 },
-        category: 'Reasoning',
-        license: 'Apache-2.0',
-        recommendedQuant: 'Q5_K_M or Q4_K_M (requires ~22-26GB memory)'
-      },
-      {
-        id: 'mixtral-8x7b',
-        name: 'Mixtral 8x7B Instruct v0.1',
-        developer: 'Mistral',
-        params: 46.7,
-        type: 'moe',
-        activeParams: 12.9,
-        releaseDate: '2023-12',
-        contextLength: 32000,
-        huggingFaceUrl: 'https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1',
-        description: 'High-quality sparse mixture of experts model that behaves like an incredibly fast dense 13B.',
-        metrics: { mmlu: 70.6, gsm8k: 74.4, humanEval: 40.2, gpqa: 19.5, mathScore: 24.2 },
-        category: 'General',
-        license: 'Apache-2.0',
-        recommendedQuant: 'Q4_K_M (requires ~30GB memory)'
-      },
-      {
-        id: 'llama-3.2-3b',
-        name: 'Llama 3.2 3B Instruct',
-        developer: 'Meta',
-        params: 3.2,
-        type: 'dense',
-        releaseDate: '2024-09',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct',
-        description: 'Perfect micro-assistant for low-resource environments or edge devices. Fine-tuned for multilingual translation.',
-        metrics: { mmlu: 63.4, gsm8k: 48.2, humanEval: 45.4, gpqa: 20.3, mathScore: 21.0 },
-        category: 'Lightweight',
-        license: 'Llama 3.2 Community',
-        recommendedQuant: 'Q8_0 or FP16'
-      },
-      {
-        id: 'command-r-plus',
-        name: 'Command R+ (104B)',
-        developer: 'Cohere',
-        params: 104,
-        type: 'dense',
-        releaseDate: '2024-04',
-        contextLength: 128000,
-        huggingFaceUrl: 'https://huggingface.co/CohereForAI/c4ai-command-r-plus',
-        description: 'Commercial-grade, open weights multilingual model optimized for high-fidelity retrieval-augmented generation and search.',
-        metrics: { mmlu: 75.7, gsm8k: 76.1, humanEval: 68.2, gpqa: 24.5, mathScore: 27.6 },
-        category: 'General',
-        license: 'CC-BY-NC-4.0',
-        recommendedQuant: 'Q4_K_M (requires ~65GB memory)'
-      }
+      { id: 'deepseek-r1', name: 'DeepSeek-R1', developer: 'DeepSeek', params: 671, type: 'moe', activeParams: 37, releaseDate: '2025-01', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-R1', description: 'First-tier open reasoning model with performance matching GPT-4o and o1. Features specialized multi-step chain-of-thought system.', metrics: { mmlu: 90.8, gsm8k: 96.3, humanEval: 92.8, gpqa: 59.1, mathScore: 93.1 }, category: 'Reasoning', license: 'MIT', recommendedQuant: 'Q4_K_M (requires ~400GB total memory)' },
+      { id: 'deepseek-v3', name: 'DeepSeek-V3', developer: 'DeepSeek', params: 671, type: 'moe', activeParams: 37, releaseDate: '2024-12', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-V3', description: 'High-performance Mixture of Experts (MoE) LLM leveraging Multi-Head Latent Attention (MLA) and DeepSeekMoE architectures.', metrics: { mmlu: 88.5, gsm8k: 94.9, humanEval: 82.6, gpqa: 41.5, mathScore: 68.4 }, category: 'General', license: 'MIT', recommendedQuant: 'Q4_K_M (requires ~400GB total memory)' },
+      { id: 'llama-3.3-70b', name: 'Llama 3.3 70B Instruct', developer: 'Meta', params: 70, type: 'dense', releaseDate: '2024-12', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct', description: 'Highly capable dense model replacing Llama 3.1 70B, trained on upgraded datasets showing superior safety and coding capability.', metrics: { mmlu: 88.6, gsm8k: 93.8, humanEval: 84.1, gpqa: 41.1, mathScore: 59.4 }, category: 'General', license: 'Llama 3.3 Community', recommendedQuant: 'Q4_K_M (requires ~43GB memory)' },
+      { id: 'phi-4-14b', name: 'Phi-4 14B', developer: 'Microsoft', params: 14, type: 'dense', releaseDate: '2024-12', contextLength: 16384, huggingFaceUrl: 'https://huggingface.co/microsoft/phi-4', description: 'Next-gen compact model with strong scientific and mathematical reasoning, leveraging high-quality synthetic datasets.', metrics: { mmlu: 79.8, gsm8k: 92.4, humanEval: 82.3, gpqa: 39.5, mathScore: 64.9 }, category: 'Reasoning', license: 'MIT', recommendedQuant: 'Q8_0 or Q5_K_M (requires ~10-15GB memory)' },
+      { id: 'qwen-2.5-72b', name: 'Qwen 2.5 72B Instruct', developer: 'Qwen', params: 72, type: 'dense', releaseDate: '2024-09', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/Qwen/Qwen2.5-72B-Instruct', description: 'One of the top-performing non-reasoning dense models in existence, boasting incredible coding and multilingual support.', metrics: { mmlu: 85.3, gsm8k: 92.2, humanEval: 86.6, gpqa: 41.2, mathScore: 63.5 }, category: 'General', license: 'Apache-2.0', recommendedQuant: 'Q4_K_M (requires ~44GB memory)' },
+      { id: 'qwen-2.5-coder-32b', name: 'Qwen 2.5 Coder 32B Instruct', developer: 'Qwen', params: 32, type: 'dense', releaseDate: '2024-11', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct', description: 'The premier open-source model specialized in coding. Matches or beats larger generalist models on a suite of code benchmarks.', metrics: { mmlu: 81.3, gsm8k: 88.3, humanEval: 90.2, gpqa: 32.1, mathScore: 56.4 }, category: 'Coding', license: 'Apache-2.0', recommendedQuant: 'Q5_K_M (requires ~24GB memory)' },
+      { id: 'gemma-2-27b', name: 'Gemma 2 27B IT', developer: 'Google', params: 27, type: 'dense', releaseDate: '2024-06', contextLength: 8192, huggingFaceUrl: 'https://huggingface.co/google/gemma-2-27b-it', description: 'Highly efficient model employing sliding-window attention and knowledge distillation. Strikes an incredible performance-per-watt balance.', metrics: { mmlu: 81.2, gsm8k: 84.8, humanEval: 72.0, gpqa: 36.8, mathScore: 43.1 }, category: 'General', license: 'Gemma Terms of Use', recommendedQuant: 'Q8_0 or Q5_K_M' },
+      { id: 'llama-3.1-8b', name: 'Llama 3.1 8B Instruct', developer: 'Meta', params: 8, type: 'dense', releaseDate: '2024-07', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct', description: 'The standard multi-utility model for local setups. Exceptional general performance and supports ultra-long contexts.', metrics: { mmlu: 68.4, gsm8k: 81.5, humanEval: 62.2, gpqa: 25.1, mathScore: 30.1 }, category: 'General', license: 'Llama 3.1 Community', recommendedQuant: 'Q8_0 or Q5_K_M (requires 6-10GB memory)' },
+      { id: 'qwen-2.5-14b', name: 'Qwen 2.5 14B Instruct', developer: 'Qwen', params: 14, type: 'dense', releaseDate: '2024-09', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/Qwen/Qwen2.5-14B-Instruct', description: 'Excellent sweet-spot model, powerful enough for complex tool-use while operating very fast on single consumer GPUs.', metrics: { mmlu: 79.6, gsm8k: 89.1, humanEval: 75.6, gpqa: 32.5, mathScore: 50.8 }, category: 'General', license: 'Apache-2.0', recommendedQuant: 'Q8_0 (requires ~16GB memory)' },
+      { id: 'gemma-2-9b', name: 'Gemma 2 9B IT', developer: 'Google', params: 9, type: 'dense', releaseDate: '2024-06', contextLength: 8192, huggingFaceUrl: 'https://huggingface.co/google/gemma-2-9b-it', description: 'Incredible density of capability. Regularly scores higher than models twice its size on reasoning, math, and style benchmarks.', metrics: { mmlu: 74.0, gsm8k: 79.4, humanEval: 65.3, gpqa: 28.5, mathScore: 35.8 }, category: 'General', license: 'Gemma Terms of Use', recommendedQuant: 'Q8_0 (requires ~11GB memory)' },
+      { id: 'phi-3.5-mini', name: 'Phi-3.5 Mini Instruct', developer: 'Microsoft', params: 3.8, type: 'dense', releaseDate: '2024-08', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/microsoft/Phi-3.5-mini-instruct', description: 'Ultra-compact model that can run fast on almost any computer or smartphone. Long context context support (128k) is its superpower.', metrics: { mmlu: 66.8, gsm8k: 73.1, humanEval: 58.5, gpqa: 24.3, mathScore: 28.5 }, category: 'Lightweight', license: 'MIT', recommendedQuant: 'Q8_0 (requires ~5GB memory)' },
+      { id: 'deepseek-r1-llama-8b', name: 'DeepSeek-R1-Distill-Llama-8B', developer: 'DeepSeek', params: 8, type: 'dense', releaseDate: '2025-01', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B', description: 'Llama 3.1 8B fine-tuned with distillation data generated by the primary DeepSeek-R1 models. Packs impressive reasoning habits into 8B params.', metrics: { mmlu: 73.5, gsm8k: 88.9, humanEval: 77.4, gpqa: 32.6, mathScore: 47.5 }, category: 'Reasoning', license: 'MIT', recommendedQuant: 'Q8_0 or Q5_K_M (requires ~6.5-9.5GB memory)' },
+      { id: 'deepseek-r1-qwen-32b', name: 'DeepSeek-R1-Distill-Qwen-32B', developer: 'DeepSeek', params: 32, type: 'dense', releaseDate: '2025-01', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B', description: 'DeepSeek distilled Qwen 2.5 32B model. Highly accurate, capable of very deep reasoning and excels on mathematical, coding, and logical tasks.', metrics: { mmlu: 82.6, gsm8k: 94.3, humanEval: 82.1, gpqa: 46.1, mathScore: 70.9 }, category: 'Reasoning', license: 'Apache-2.0', recommendedQuant: 'Q5_K_M or Q4_K_M (requires ~22-26GB memory)' },
+      { id: 'mixtral-8x7b', name: 'Mixtral 8x7B Instruct v0.1', developer: 'Mistral', params: 46.7, type: 'moe', activeParams: 12.9, releaseDate: '2023-12', contextLength: 32000, huggingFaceUrl: 'https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1', description: 'High-quality sparse mixture of experts model that behaves like an incredibly fast dense 13B of uncompromised depth.', metrics: { mmlu: 70.6, gsm8k: 74.4, humanEval: 40.2, gpqa: 19.5, mathScore: 24.2 }, category: 'General', license: 'Apache-2.0', recommendedQuant: 'Q4_K_M (requires ~30GB memory)' },
+      { id: 'llama-3.2-3b', name: 'Llama 3.2 3B Instruct', developer: 'Meta', params: 3.2, type: 'dense', releaseDate: '2024-09', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct', description: 'Perfect micro-assistant for low-resource environments or edge devices. Fine-tuned for multilingual translation and structured agent usage.', metrics: { mmlu: 63.4, gsm8k: 48.2, humanEval: 45.4, gpqa: 20.3, mathScore: 21.0 }, category: 'Lightweight', license: 'Llama 3.2 Community', recommendedQuant: 'Q8_0 or FP16' },
+      { id: 'command-r-plus', name: 'Command R+ (104B)', developer: 'Cohere', params: 104, type: 'dense', releaseDate: '2024-04', contextLength: 128000, huggingFaceUrl: 'https://huggingface.co/CohereForAI/c4ai-command-r-plus', description: 'Commercial-grade, open weights multilingual model optimized for high-fidelity retrieval-augmented generation (RAG) and multi-step tool execution.', metrics: { mmlu: 75.7, gsm8k: 76.1, humanEval: 68.2, gpqa: 24.5, mathScore: 27.6 }, category: 'General', license: 'CC-BY-NC-4.0', recommendedQuant: 'Q4_K_M (requires ~65GB memory)' }
     ];
 
+    // ==================== COMPLETE QUANTIZATION CONFIGURATIONS ====================
     const QUANTIZATIONS = [
-      { key: 'fp16', name: 'FP16 (Unquantized)', bpw: 16, sizeMultiplier: 2.0, qualityLoss: 'None', description: 'Original precision. Zero model quality loss.' },
-      { key: 'q8_0', name: 'Q8_0 (8-bit)', bpw: 8.5, sizeMultiplier: 1.1, qualityLoss: 'Imperceptible', description: 'Near-native FP16 performance with 45% RAM reduction.' },
-      { key: 'q6_k', name: 'Q6_K (6-bit)', bpw: 6.6, sizeMultiplier: 0.88, qualityLoss: 'Very Low', description: 'Incredible balance of speed, retention, and size.' },
-      { key: 'q5_k_m', name: 'Q5_K_M (5-bit)', bpw: 5.5, sizeMultiplier: 0.75, qualityLoss: 'Very Low', description: 'Sweet-spot budget format for most GPUs.' },
-      { key: 'q4_k_m', name: 'Q4_K_M (4-bit)', bpw: 4.8, sizeMultiplier: 0.65, qualityLoss: 'Low', description: 'Standard benchmark trade-off for 95% of setups.' },
-      { key: 'q3_k_m', name: 'Q3_K_M (3-bit)', bpw: 3.7, sizeMultiplier: 0.52, qualityLoss: 'Medium', description: 'Highly compressed file size for tight setups.' },
-      { key: 'q2_k', name: 'Q2_K (2-bit)', bpw: 2.9, sizeMultiplier: 0.42, qualityLoss: 'High', description: 'Extreme reduction with noticeable quality decay.' }
+      { key: 'fp16', name: 'FP16 (Unquantized)', bpw: 16, sizeMultiplier: 2.0, qualityLoss: 'None', description: 'Original precision. Zero model quality loss. Excellent output quality, but massive resource footprints.' },
+      { key: 'q8_0', name: 'Q8_0 (8-bit)', bpw: 8.5, sizeMultiplier: 1.1, qualityLoss: 'Imperceptible', description: 'Near-native FP16 performance with 45% RAM reduction. Recommended baseline for setups with plenty of VRAM.' },
+      { key: 'q6_k', name: 'Q6_K (6-bit)', bpw: 6.6, sizeMultiplier: 0.88, qualityLoss: 'Very Low', description: 'Incredible balance of speed, retention, and file size. Almost indistinguishable from 8-bit.' },
+      { key: 'q5_k_m', name: 'Q5_K_M (5-bit)', bpw: 5.5, sizeMultiplier: 0.75, qualityLoss: 'Very Low', description: 'Extremely popular "sweet-spot". Highly recommended budget configuration for small GPU cards.' },
+      { key: 'q4_k_m', name: 'Q4_K_M (4-bit)', bpw: 4.8, sizeMultiplier: 0.65, qualityLoss: 'Low', description: 'The standard local benchmark standard. Standardized size-to-utility ratio for 95% of self-hosters.' },
+      { key: 'q3_k_m', name: 'Q3_K_M (3-bit)', bpw: 3.7, sizeMultiplier: 0.52, qualityLoss: 'Medium', description: 'Serviceable performance when desperate to fit a large model. Visible degrade in complex reasoning but fast.' },
+      { key: 'q2_k', name: 'Q2_K (2-bit)', bpw: 2.9, sizeMultiplier: 0.42, qualityLoss: 'High', description: 'Extreme degradation. Only suitable for basic chats on restricted RAM environments.' }
     ];
 
+    // ==================== COMPLETE HARDWARE PROFILES DATABASE ====================
     const HARDWARE_PROFILES = [
-      { id: 'rtx-5090', name: 'NVIDIA RTX 5090 Blackwell', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '32GB GDDR7', vram: 32, memoryBandwidth: 1792, estimatedPriceUSD: 1999, powerConsumptionWatts: 600, tpsScaling: 0.98, description: 'Supreme flagship. Runs most heavy models completely locally in VRAM.' },
-      { id: 'rtx-4090', name: 'NVIDIA RTX 4090', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '24GB GDDR6X', vram: 24, memoryBandwidth: 1008, estimatedPriceUSD: 1699, powerConsumptionWatts: 450, tpsScaling: 0.95, description: 'Standard high-end benchmark. Incredible bandwidth speeds.' },
-      { id: 'rtx-4080-super', name: 'NVIDIA RTX 4080 Super', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6X', vram: 16, memoryBandwidth: 736, estimatedPriceUSD: 999, powerConsumptionWatts: 320, tpsScaling: 0.93, description: 'Agile 16GB discrete GPU. Perfect for up to 14B models.' },
-      { id: 'rtx-4070-ti-super', name: 'NVIDIA RTX 4070 Ti Super', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 672, estimatedPriceUSD: 799, powerConsumptionWatts: 285, tpsScaling: 0.92, description: 'Inference community superstar. Best budget 16GB Card.' },
-      { id: 'rtx-4060-ti-16', name: 'NVIDIA RTX 4060 Ti (16GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 288, estimatedPriceUSD: 449, powerConsumptionWatts: 160, tpsScaling: 0.85, description: 'Cheapest 16GB card available, despite narrower bandwidth.' },
-      { id: 'macbook-pro-max', name: 'Apple MacBook Pro (M3 Max - 128GB)', category: 'mac', platformType: 'Mac Unified', memoryType: '128GB LPDDR5', vram: 102, memoryBandwidth: 400, estimatedPriceUSD: 3999, powerConsumptionWatts: 45, tpsScaling: 0.88, description: 'Superb development setup. Extreme pool of unified RAM.' },
-      { id: 'mac-studio-ultra', name: 'Apple Mac Studio (M2 Ultra - 192GB)', category: 'mac', platformType: 'Mac Unified', memoryType: '192GB LPDDR5', vram: 153, memoryBandwidth: 800, estimatedPriceUSD: 5599, powerConsumptionWatts: 90, tpsScaling: 0.92, description: 'Holy grail layout for massive 70B+ parameter models.' },
-      { id: 'workstation-ddr5', name: 'Workstation PC (DDR5 Dual-Channel)', category: 'pc_cpu', platformType: 'CPU Station', memoryType: '128GB DDR5 SDRAM', vram: 128, memoryBandwidth: 80, estimatedPriceUSD: 1400, powerConsumptionWatts: 220, tpsScaling: 0.65, description: 'Durable system memory. Steady, budget-friendly parameters.' }
+      // --- NVIDIA RTX DESKTOP GENERATIONS (GDDR7 & GDDR6X) ---
+      { id: 'rtx-5090', name: 'NVIDIA RTX 5090 Blackwell', category: 'gpu', platformType: 'NVIDIA Desktop (Next-Gen)', memoryType: '32GB GDDR7', vram: 32, memoryBandwidth: 1792, estimatedPriceUSD: 1999, powerConsumptionWatts: 600, tpsScaling: 0.98, description: 'Supreme next-generation apex consumer local inference card. Huge 32GB of state-of-the-art GDDR7 memory runs deep reasoning weights entirely in high speeds.' },
+      { id: 'rtx-5080', name: 'NVIDIA RTX 5080', category: 'gpu', platformType: 'NVIDIA Desktop (Next-Gen)', memoryType: '16GB GDDR7', vram: 16, memoryBandwidth: 1008, estimatedPriceUSD: 999, powerConsumptionWatts: 400, tpsScaling: 0.96, description: 'Outstanding speed driven by blisteringly fast GDDR7 bus bandwidth. High token-per-second values for 8B and 14B models.' },
+      { id: 'rtx-5070', name: 'NVIDIA RTX 5070', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR7', vram: 12, memoryBandwidth: 672, estimatedPriceUSD: 649, powerConsumptionWatts: 250, tpsScaling: 0.94, description: 'High-velocity entry into Blackwell. Faster GDDR7 streams lighter parameters almost instantly.' },
+      { id: 'rtx-4090', name: 'NVIDIA RTX 4090 (Single)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '24GB GDDR6X', vram: 24, memoryBandwidth: 1008, estimatedPriceUSD: 1699, powerConsumptionWatts: 450, tpsScaling: 0.95, description: 'The absolute desktop standard benchmark. Massive memory throughput and tensor speeds.' },
+      { id: 'rtx-4080-super', name: 'NVIDIA RTX 4080 Super', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6X', vram: 16, memoryBandwidth: 736, estimatedPriceUSD: 999, powerConsumptionWatts: 320, tpsScaling: 0.93, description: 'Perfect 16GB discrete card offering fluid generation on intermediate weights.' },
+      { id: 'rtx-4080', name: 'NVIDIA RTX 4080', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6X', vram: 16, memoryBandwidth: 717, estimatedPriceUSD: 1099, powerConsumptionWatts: 320, tpsScaling: 0.92, description: 'Excellent Ada Lovelace runner across local inference engines.' },
+      { id: 'rtx-4070-ti-super', name: 'NVIDIA RTX 4070 Ti Super', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 672, estimatedPriceUSD: 799, powerConsumptionWatts: 285, tpsScaling: 0.92, description: 'The community darling. Cheapest 256-bit gateway card to run 16GB models in high speed without system swaps.' },
+      { id: 'rtx-4070-ti', name: 'NVIDIA RTX 4070 Ti', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR6X', vram: 12, memoryBandwidth: 504, estimatedPriceUSD: 749, powerConsumptionWatts: 285, tpsScaling: 0.91, description: 'Capable of loading 8B or 11B models securely in VRAM with high speed metrics.' },
+      { id: 'rtx-4070-super', name: 'NVIDIA RTX 4070 Super', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR6X', vram: 12, memoryBandwidth: 504, estimatedPriceUSD: 599, powerConsumptionWatts: 220, tpsScaling: 0.91, description: 'Well-balanced performance GPU with high active tensor compute efficiency.' },
+      { id: 'rtx-4070', name: 'NVIDIA RTX 4070', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR6X', vram: 12, memoryBandwidth: 504, estimatedPriceUSD: 549, powerConsumptionWatts: 200, tpsScaling: 0.90, description: 'Cool and silent runner, great physical entry to launch 8B open model nodes.' },
+      { id: 'rtx-4060-ti-16', name: 'NVIDIA RTX 4060 Ti (16GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 288, estimatedPriceUSD: 449, powerConsumptionWatts: 160, tpsScaling: 0.85, description: 'Highly affordable 16GB choice. Narrower 128-bit bus limits top speeds, but fits large weights comfortably.' },
+      { id: 'rtx-4060-ti-8', name: 'NVIDIA RTX 4060 Ti (8GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '8GB GDDR6', vram: 8, memoryBandwidth: 288, estimatedPriceUSD: 389, powerConsumptionWatts: 160, tpsScaling: 0.84, description: 'Clean intermediate accelerator block for lightweight 3B models or small quantized runs.' },
+      { id: 'rtx-4060', name: 'NVIDIA RTX 4060', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '8GB GDDR6', vram: 8, memoryBandwidth: 272, estimatedPriceUSD: 299, powerConsumptionWatts: 115, tpsScaling: 0.83, description: 'Budget power saver. Excellent for developing lightweight endpoints or training tiny adapters.' },
+      { id: 'rtx-3090-ti', name: 'NVIDIA RTX 3090 Ti', category: 'gpu', platformType: 'NVIDIA Desktop (Ampere)', memoryType: '24GB GDDR6X', vram: 24, memoryBandwidth: 1008, estimatedPriceUSD: 850, powerConsumptionWatts: 450, tpsScaling: 0.92, description: 'Top tier Ampere titan. High power draw, but massive bus width equals supreme token deliveries.' },
+      { id: 'rtx-3090', name: 'NVIDIA RTX 3090', category: 'gpu', platformType: 'NVIDIA Desktop (Ampere)', memoryType: '24GB GDDR6X', vram: 24, memoryBandwidth: 936, estimatedPriceUSD: 700, powerConsumptionWatts: 350, tpsScaling: 0.91, description: 'Secondary market supreme king. 24GB high speed memory runs larger 32B or 70B models at amazing price ratios.' },
+      { id: 'rtx-3080-ti', name: 'NVIDIA RTX 3080 Ti', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR6X', vram: 12, memoryBandwidth: 912, estimatedPriceUSD: 450, powerConsumptionWatts: 350, tpsScaling: 0.89, description: 'Wide 384-bit bus speeds up generation, but limited to 12GB max buffer size.' },
+      { id: 'rtx-3080-12g', name: 'NVIDIA RTX 3080 (12GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR6X', vram: 12, memoryBandwidth: 912, estimatedPriceUSD: 400, powerConsumptionWatts: 350, tpsScaling: 0.88, description: 'Aggressive Ampere runner with rapid prefill and context operations.' },
+      { id: 'rtx-3080-10g', name: 'NVIDIA RTX 3080 (10GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '10GB GDDR6X', vram: 10, memoryBandwidth: 760, estimatedPriceUSD: 350, powerConsumptionWatts: 320, tpsScaling: 0.87, description: 'Classic favorite. High compute power, but VRAM constraints require tight model targets.' },
+      { id: 'rtx-3070-ti', name: 'NVIDIA RTX 3070 Ti', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '8GB GDDR6X', vram: 8, memoryBandwidth: 608, estimatedPriceUSD: 300, powerConsumptionWatts: 290, tpsScaling: 0.86, description: 'Fast memory lines, but 8GB budget limits application strictly to light quantized model sizes.' },
+      { id: 'rtx-3070', name: 'NVIDIA RTX 3070', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '8GB GDDR6', vram: 8, memoryBandwidth: 448, estimatedPriceUSD: 250, powerConsumptionWatts: 220, tpsScaling: 0.85, description: 'Common PC desktop driver. Solid for testing out lighter models.' },
+      { id: 'rtx-3060-ti', name: 'NVIDIA RTX 3060 Ti', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '8GB GDDR6', vram: 8, memoryBandwidth: 448, estimatedPriceUSD: 230, powerConsumptionWatts: 200, tpsScaling: 0.84, description: 'Agile starting point for developer playgrounds exploring edge assistants.' },
+      { id: 'rtx-3060-12b', name: 'NVIDIA RTX 3060 (12GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '12GB GDDR6', vram: 12, memoryBandwidth: 360, estimatedPriceUSD: 289, powerConsumptionWatts: 170, tpsScaling: 0.90, description: 'Excellent budget king. 12GB VRAM allows playing with any 8B model with lossless Q8 or FP16 loads!' },
+      { id: 'rtx-3050-8b', name: 'NVIDIA RTX 3050 (8GB)', category: 'gpu', platformType: 'NVIDIA Desktop', memoryType: '8GB GDDR6', vram: 8, memoryBandwidth: 224, estimatedPriceUSD: 169, powerConsumptionWatts: 130, tpsScaling: 0.80, description: 'Entry card. Best used to test small context 1B-3B scale models.' },
+      
+      // --- MULTI-GPU DESKTOP CONFIGS ---
+      { id: 'dual-rtx-4090', name: 'Dual NVIDIA RTX 4090 (Split)', category: 'gpu', platformType: 'NVIDIA Desktop (Multi-GPU)', memoryType: '48GB GDDR6X (Combined)', vram: 48, memoryBandwidth: 1800, estimatedPriceUSD: 3398, powerConsumptionWatts: 900, tpsScaling: 0.88, description: 'Enthusiast workstation setup. Large 48GB frame runs 70B models at full speed with ease.' },
+      { id: 'dual-rtx-3090', name: 'Dual NVIDIA RTX 3090 (Split)', category: 'gpu', platformType: 'NVIDIA Desktop (Multi-GPU)', memoryType: '48GB GDDR6X (Combined)', vram: 48, memoryBandwidth: 1400, estimatedPriceUSD: 1400, powerConsumptionWatts: 700, tpsScaling: 0.85, description: 'Highly popular budget workstation for luxury hosting. Runs 70B reasoners beautifully.' },
+      
+      // --- NVIDIA WORKSTATION & PROFESSIONAL ADA RANGE ---
+      { id: 'rtx-spark-sff', name: 'NVIDIA RTX Spark (LP SFF Concept)', category: 'gpu', platformType: 'NVIDIA Workstation (Special)', memoryType: '24GB GDDR7', vram: 24, memoryBandwidth: 1008, estimatedPriceUSD: 1899, powerConsumptionWatts: 250, tpsScaling: 0.96, description: 'Low profile silent workstation powerhouse designed for decentralized edge servers.' },
+      { id: 'rtx-4000-sff-ada', name: 'NVIDIA RTX 4000 SFF Ada', category: 'gpu', platformType: 'NVIDIA Workstation', memoryType: '20GB GDDR6 (ECC)', vram: 20, memoryBandwidth: 280, estimatedPriceUSD: 1250, powerConsumptionWatts: 70, tpsScaling: 0.88, description: 'Draws only 70W yet provides professional 20GB ECC memory for high-reliability systems.' },
+      { id: 'rtx-6000-ada', name: 'NVIDIA RTX 6000 Ada', category: 'gpu', platformType: 'NVIDIA Workstation (Professional)', memoryType: '48GB GDDR6 (ECC)', vram: 48, memoryBandwidth: 960, estimatedPriceUSD: 6800, powerConsumptionWatts: 300, tpsScaling: 0.96, description: 'Professional titan. 48GB ECC memory allows heavy concurrent batching tasks silently.' },
+      { id: 'rtx-5880-ada', name: 'NVIDIA RTX 5880 Ada', category: 'gpu', platformType: 'NVIDIA Workstation (Professional)', memoryType: '48GB GDDR6 (ECC)', vram: 48, memoryBandwidth: 960, estimatedPriceUSD: 5999, powerConsumptionWatts: 285, tpsScaling: 0.94, description: 'Sub-flagship workhorse for stable continuous localized inference.' },
+      { id: 'rtx-5000-ada', name: 'NVIDIA RTX 5000 Ada', category: 'gpu', platformType: 'NVIDIA Workstation', memoryType: '32GB GDDR6 (ECC)', vram: 32, memoryBandwidth: 576, estimatedPriceUSD: 3999, powerConsumptionWatts: 250, tpsScaling: 0.93, description: 'Enterprise midblock runner. Safely execution bounds for moderate parameter classes.' },
+      { id: 'rtx-4500-ada', name: 'NVIDIA RTX 4500 Ada', category: 'gpu', platformType: 'NVIDIA Workstation', memoryType: '24GB GDDR6 (ECC)', vram: 24, memoryBandwidth: 432, estimatedPriceUSD: 2250, powerConsumptionWatts: 210, tpsScaling: 0.92, description: 'Balanced 24GB option with robust ECC data integrity filters.' },
+      { id: 'rtx-a6000', name: 'NVIDIA RTX A6000', category: 'gpu', platformType: 'NVIDIA Workstation', memoryType: '48GB GDDR6', vram: 48, memoryBandwidth: 768, estimatedPriceUSD: 4500, powerConsumptionWatts: 300, tpsScaling: 0.95, description: 'Previous-gen Workstation. Can NVLink with a twin to achieve 96GB unified space.' },
+      { id: 'rtx-a5000', name: 'NVIDIA RTX A5000', category: 'gpu', platformType: 'NVIDIA Workstation', memoryType: '24GB GDDR6', vram: 24, memoryBandwidth: 768, estimatedPriceUSD: 2200, powerConsumptionWatts: 230, tpsScaling: 0.93, description: 'Durable blower. Handles long-run multi-batch queries securely.' },
+      { id: 'rtx-a4000', name: 'NVIDIA RTX A4000', category: 'gpu', platformType: 'NVIDIA Workstation', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 448, estimatedPriceUSD: 950, powerConsumptionWatts: 140, tpsScaling: 0.91, description: 'Single-slot layout. Beautifully thin, perfect for compact servers.' },
+      
+      // --- NVIDIA DGX & ENTERPRISE SUPERCOMPUTERS ---
+      { id: 'dgx-gb200-nvl72', name: 'NVIDIA DGX GB200 NVL72 Rack', category: 'gpu', platformType: 'NVIDIA Supercomputer (Scale Rack)', memoryType: '30,240GB HBM3e (NVLink)', vram: 30240, memoryBandwidth: 129600, estimatedPriceUSD: 2999000, powerConsumptionWatts: 120000, tpsScaling: 0.99, description: 'The absolute pinnacle of AI infrastructure. Runs dense trillion-parameter models inside pure cache at blistering speed.' },
+      { id: 'dgx-b200', name: 'NVIDIA DGX B200 Supernode', category: 'gpu', platformType: 'NVIDIA Enterprise (8x GPU Node)', memoryType: '1,536GB HBM3e (Combined)', vram: 1536, memoryBandwidth: 64000, estimatedPriceUSD: 385000, powerConsumptionWatts: 14300, tpsScaling: 0.98, description: 'Eight Blackwell B200 accelerators unified. Massive bandwidth for hyper-parallel serving chains.' },
+      { id: 'dgx-h200', name: 'NVIDIA DGX H200 Node', category: 'gpu', platformType: 'NVIDIA Enterprise (8x GPU)', memoryType: '1,128GB HBM3e (Combined)', vram: 1128, memoryBandwidth: 38400, estimatedPriceUSD: 299000, powerConsumptionWatts: 10200, tpsScaling: 0.97, description: 'Gold research standard. Incredible HBM3e throughput scales deep workloads seamlessly.' },
+      { id: 'dgx-h100', name: 'NVIDIA DGX H100 Node', category: 'gpu', platformType: 'NVIDIA Enterprise (8x GPU)', memoryType: '640GB HBM3 (Combined)', vram: 640, memoryBandwidth: 26800, estimatedPriceUSD: 249000, powerConsumptionWatts: 10200, tpsScaling: 0.96, description: 'The platform that boosted the modern generative era. Unified 8-way H100 SXM modules.' },
+      { id: 'dgx-a100', name: 'NVIDIA DGX A100 Server (80G)', category: 'gpu', platformType: 'NVIDIA Enterprise (8x GPU)', memoryType: '640GB HBM2e (Combined)', vram: 640, memoryBandwidth: 16000, estimatedPriceUSD: 149000, powerConsumptionWatts: 6500, tpsScaling: 0.94, description: 'Highly capable enterprise server carrying eight A100 80GB packages.' },
+      { id: 'nvidia-h100-pcie', name: 'NVIDIA H100 PCIe (80GB)', category: 'gpu', platformType: 'NVIDIA Enterprise (Single GPU)', memoryType: '80GB HBM3', vram: 80, memoryBandwidth: 3350, estimatedPriceUSD: 32000, powerConsumptionWatts: 350, tpsScaling: 0.95, description: 'Single physical enterprise card. Designed for high density server boards.' },
+      { id: 'nvidia-a100-pcie', name: 'NVIDIA A100 PCIe (80GB)', category: 'gpu', platformType: 'NVIDIA Enterprise (Single GPU)', memoryType: '80GB HBM2e', vram: 80, memoryBandwidth: 2039, estimatedPriceUSD: 12000, powerConsumptionWatts: 300, tpsScaling: 0.92, description: 'Research developer standard. Massive space to compile large model layers.' },
+      { id: 'nvidia-l40s', name: 'NVIDIA L40S PCIe (48GB)', category: 'gpu', platformType: 'NVIDIA Enterprise PCIe', memoryType: '48GB GDDR6', vram: 48, memoryBandwidth: 864, estimatedPriceUSD: 11000, powerConsumptionWatts: 350, tpsScaling: 0.93, description: 'Highly versatile generative card. Excellent for localized training and inference.' },
+      { id: 'nvidia-l4', name: 'NVIDIA L4 PCIe (24GB)', category: 'gpu', platformType: 'NVIDIA Enterprise PCIe', memoryType: '24GB GDDR6', vram: 24, memoryBandwidth: 300, estimatedPriceUSD: 2500, powerConsumptionWatts: 72, tpsScaling: 0.88, description: 'Power champion. Pulls barely 72W while supplying professional 24GB developer framework.' },
+      
+      // --- NEUREALITY & CLOUD CUSTOM ACCELERATORS (N1 / N1X) ---
+      { id: 'neureality-nr1', name: 'NeuReality NR1 (N1 Card)', category: 'gpu', platformType: 'NeuReality NAPU Device', memoryType: '16GB LPDDR5 (NAPU)', vram: 16, memoryBandwidth: 800, estimatedPriceUSD: 2200, powerConsumptionWatts: 150, tpsScaling: 0.92, description: 'Network Addressable Processing Unit (NAPU). Direct TCP/IP streaming bypasses legacy CPU bottlenecks.' },
+      { id: 'neureality-nr1s', name: 'NeuReality NR1-S Appliance', category: 'gpu', platformType: 'NeuReality NAPU Server', memoryType: '160GB Unified (10-way)', vram: 160, memoryBandwidth: 8000, estimatedPriceUSD: 28500, powerConsumptionWatts: 1600, tpsScaling: 0.95, description: 'N1X ten-processor appliance mapping maximum local queries with native PCIe bypass protocols.' },
+      { id: 'aws-trn1-32xl', name: 'AWS Trainium Trn1 Instance', category: 'gpu', platformType: 'AWS Custom Cloud Node', memoryType: '512GB SDK HBM (Combined)', vram: 512, memoryBandwidth: 12800, estimatedPriceUSD: 110000, powerConsumptionWatts: 6000, tpsScaling: 0.94, description: '16 Trainium custom chips unified on AWS cloud cluster.' },
+      { id: 'aws-trn1x-32xl', name: 'AWS Trainium Trn1-x (N1X Cloud)', category: 'gpu', platformType: 'AWS Custom Cloud Node', memoryType: '512GB SDK HBM3 (Combined)', vram: 512, memoryBandwidth: 13500, estimatedPriceUSD: 125000, powerConsumptionWatts: 6500, tpsScaling: 0.95, description: 'Premium cloud node with high-velocity internal Trainium pipelines.' },
+      
+      // --- AMD RADEON DESKTOP GPUS ---
+      { id: 'rx-7900-xtx', name: 'AMD Radeon RX 7900 XTX', category: 'gpu', platformType: 'AMD Desktop (RDNA3)', memoryType: '24GB GDDR6', vram: 24, memoryBandwidth: 960, estimatedPriceUSD: 929, powerConsumptionWatts: 355, tpsScaling: 0.86, description: 'Splendid budget gateway. Provides huge 24GB framebuffer for ROCm/Linux self-hosters.' },
+      { id: 'rx-7900-xt', name: 'AMD Radeon RX 7900 XT', category: 'gpu', platformType: 'AMD Desktop (RDNA3)', memoryType: '20GB GDDR6', vram: 20, memoryBandwidth: 800, estimatedPriceUSD: 699, powerConsumptionWatts: 315, tpsScaling: 0.85, description: 'Very competitive 20GB layout. Fits 14B Q8 or 32B medium configs easily.' },
+      { id: 'rx-7900-gre', name: 'AMD Radeon RX 7900 GRE', category: 'gpu', platformType: 'AMD Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 576, estimatedPriceUSD: 549, powerConsumptionWatts: 260, tpsScaling: 0.84, description: 'Excellent price-to-VRAM choice with RDNA3 architecture updates.' },
+      { id: 'rx-7800-xt', name: 'AMD Radeon RX 7800 XT', category: 'gpu', platformType: 'AMD Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 624, estimatedPriceUSD: 499, powerConsumptionWatts: 263, tpsScaling: 0.84, description: 'Immense gaming favorite. Securely handles 8B class models with spacious bandwidth.' },
+      { id: 'rx-7700-xt', name: 'AMD Radeon RX 7700 XT', category: 'gpu', platformType: 'AMD Desktop', memoryType: '12GB GDDR6', vram: 12, memoryBandwidth: 432, estimatedPriceUSD: 419, powerConsumptionWatts: 245, tpsScaling: 0.82, description: 'Reliable RDNA3 card for high speed localized desktop chatbot play.' },
+      { id: 'rx-7600-xt', name: 'AMD Radeon RX 7600 XT', category: 'gpu', platformType: 'AMD Desktop', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 288, estimatedPriceUSD: 329, powerConsumptionWatts: 190, tpsScaling: 0.80, description: 'Absolute cheapest 16GB discrete card. Bus speeds are tighter, but holds large parameters nicely.' },
+      { id: 'rx-6950-xt', name: 'AMD Radeon RX 6950 XT', category: 'gpu', platformType: 'AMD Desktop (RDNA2)', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 512, estimatedPriceUSD: 550, powerConsumptionWatts: 335, tpsScaling: 0.81, description: 'Previous compute champion. Strong RDNA2 bus speeds provide great used value.' },
+      { id: 'rx-6800-xt', name: 'AMD Radeon RX 6800 XT', category: 'gpu', platformType: 'AMD Desktop (RDNA2)', memoryType: '16GB GDDR6', vram: 16, memoryBandwidth: 512, estimatedPriceUSD: 420, powerConsumptionWatts: 300, tpsScaling: 0.81, description: 'Extremely popular used card, robust speed outputs for typical 8B models.' },
+      
+      // --- AMD RYZEN LATEST STRIX HALO & APUS (AI PC) ---
+      { id: 'apu-strix-halo-395', name: 'AMD Ryzen AI Max 395 (Strix Halo 96GB)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '96GB LPDDR5X (Unified)', vram: 64, memoryBandwidth: 546, estimatedPriceUSD: 1600, powerConsumptionWatts: 130, tpsScaling: 0.86, description: 'Premier next-gen APU benchmark. Wide 512-bit bus pushes 546 GB/s, matching heavy graphics cards up to 96GB.' },
+      { id: 'apu-strix-halo-390', name: 'AMD Ryzen AI Max 390 (Strix Halo 64GB)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '64GB LPDDR5X (Unified)', vram: 44, memoryBandwidth: 400, estimatedPriceUSD: 1200, powerConsumptionWatts: 110, tpsScaling: 0.84, description: 'Superb mid-range Strix Halo APU. Large unified RAM maps run huge models locally.' },
+      { id: 'apu-strix-halo-385', name: 'AMD Ryzen AI Max 385 (Strix Halo 32GB)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '32GB LPDDR5X (Unified)', vram: 24, memoryBandwidth: 300, estimatedPriceUSD: 950, powerConsumptionWatts: 90, tpsScaling: 0.82, description: 'Budget Strix Halo entry. Excellent bandwidth for standard laptop configurations.' },
+      { id: 'apu-ryzen-ai-9-hx370', name: 'AMD Ryzen AI 9 HX 370 (Radeon 890M)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '32GB LPDDR5X', vram: 16, memoryBandwidth: 135, estimatedPriceUSD: 1100, powerConsumptionWatts: 45, tpsScaling: 0.80, description: 'Zen 5 flagship APU holding Radeon 890M graphics, allocating up to 16GB system RAM as VRAM.' },
+      { id: 'apu-ryzen-ai-9-365', name: 'AMD Ryzen AI 9 365 (Radeon 880M)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '24GB LPDDR5X', vram: 12, memoryBandwidth: 120, estimatedPriceUSD: 850, powerConsumptionWatts: 35, tpsScaling: 0.78, description: 'Efficient APU setup allocating up to 12GB of shared physical system context buffers.' },
+      { id: 'apu-ryzen-7-8700g', name: 'AMD Ryzen 7 8700G (Radeon 780M)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '24GB DDR5-6400 (BIOS Share)', vram: 16, memoryBandwidth: 102, estimatedPriceUSD: 600, powerConsumptionWatts: 65, tpsScaling: 0.78, description: 'Desktop APU flagship with Radeon 780M graphics. Designates up to 16GB as VRAM via BIOS.' },
+      { id: 'apu-ryzen-8840u', name: 'AMD Ryzen 7 8840U (780M Hawk Point)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '32GB LPDDR5-7500', vram: 16, memoryBandwidth: 120, estimatedPriceUSD: 799, powerConsumptionWatts: 25, tpsScaling: 0.79, description: 'Ultraportable Hawk Point NPU engine paired with dedicated LPDDR5 system bandwidth.' },
+      { id: 'apu-ryzen-7840u', name: 'AMD Ryzen 7 7840U (Phoenix APU / Z1)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '16GB LPDDR5-6400', vram: 8, memoryBandwidth: 102, estimatedPriceUSD: 599, powerConsumptionWatts: 15, tpsScaling: 0.77, description: 'Handheld gaming console favorite. Great integrated graphics with shared VRAM slots.' },
+      { id: 'apu-ryzen-6800u', name: 'AMD Ryzen 7 6800u (Older APU)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '16GB LPDDR5', vram: 8, memoryBandwidth: 100, estimatedPriceUSD: 450, powerConsumptionWatts: 15, tpsScaling: 0.74, description: 'Older portable chip. Highly functional entry matching 8GB BIOS limits.' },
+      { id: 'apu-ryzen-5700g', name: 'AMD Ryzen 7 5700G (Vega 8 Classic)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '16GB DDR4-3200', vram: 8, memoryBandwidth: 44, estimatedPriceUSD: 299, powerConsumptionWatts: 65, tpsScaling: 0.68, description: 'Modular desktop APU. Bound to DDR4 speeds but highly common in home servers.' },
+      { id: 'apu-ryzen-4700u', name: 'AMD Ryzen 7 4700U (Radeon Vega 7)', category: 'gpu', platformType: 'AMD APU / AI PC', memoryType: '16GB DDR4', vram: 6, memoryBandwidth: 35, estimatedPriceUSD: 250, powerConsumptionWatts: 15, tpsScaling: 0.65, description: 'Decentralized early APU setup yielding high basic utility for light queries.' },
+      { id: 'apu-intel-ultra-7-258v', name: 'Intel Core Ultra 7 258V (Lunar Lake)', category: 'gpu', platformType: 'Intel APU / AI PC', memoryType: '32GB LPDDR5X On-Package', vram: 16, memoryBandwidth: 136, estimatedPriceUSD: 1050, powerConsumptionWatts: 30, tpsScaling: 0.79, description: 'Lunar Lake mobile chip with in-package LPDDR5X RAM and stable Xe2 graphics.' },
+      
+      // --- APPLE SILICON UNIFIED DESKTOP & LAPTOP (M1 TO M5 GENERATIONS) ---
+      // ==================== M5 GENERATION ====================
+      { id: 'apple-m5-ultra', name: 'Apple M5 Ultra (Concept)', category: 'mac', platformType: 'Unified Mac Desktop (Next-Gen)', memoryType: '256GB Unified Memory', vram: 204, memoryBandwidth: 1400, estimatedPriceUSD: 6999, powerConsumptionWatts: 150, tpsScaling: 0.96, description: 'Upcoming extreme titan. Massive 2048-bit bus pushes 1400 GB/s bandwidth over immense memory pools.' },
+      { id: 'apple-m5-max', name: 'Apple M5 Max', category: 'mac', platformType: 'Unified Mac Laptop / Desktop', memoryType: '144GB Unified Memory', vram: 115, memoryBandwidth: 800, estimatedPriceUSD: 4599, powerConsumptionWatts: 50, tpsScaling: 0.94, description: 'Next-gen laptop flagship. Broad bandwidth enables portable reasoning outputs on massive networks.' },
+      { id: 'apple-m5-pro', name: 'Apple M5 Pro', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '72GB Unified Memory', vram: 57, memoryBandwidth: 384, estimatedPriceUSD: 2799, powerConsumptionWatts: 35, tpsScaling: 0.92, description: 'Next-gen Pro system configuration. Outstanding mobile performance parameters.' },
+      { id: 'apple-m5-base', name: 'Apple M5 (Base)', category: 'mac', platformType: 'Unified Mac Base Line', memoryType: '32GB Unified Memory', vram: 25, memoryBandwidth: 170, estimatedPriceUSD: 1299, powerConsumptionWatts: 20, tpsScaling: 0.90, description: 'Efficient entry computing system designed around next-generation neural engines.' },
+      
+      // ==================== M4 GENERATION ====================
+      { id: 'mac-studio-m4-ultra', name: 'Mac Studio (M4 Ultra - Concept)', category: 'mac', platformType: 'Unified Mac Desktop', memoryType: '192GB Unified Memory', vram: 153, memoryBandwidth: 1000, estimatedPriceUSD: 5999, powerConsumptionWatts: 140, tpsScaling: 0.94, description: 'Premier desktop server. Estimated 1000 GB/s bandwidth streams 70B and 405B models like small chatbots.' },
+      { id: 'apple-m4-max', name: 'MacBook Pro (M4 Max - 128GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '128GB Unified Memory', vram: 102, memoryBandwidth: 546, estimatedPriceUSD: 4299, powerConsumptionWatts: 45, tpsScaling: 0.92, description: 'Superb portable masterclass. Fast 546 GB/s memory bandwidth is perfect for offline developers.' },
+      { id: 'apple-m4-pro', name: 'MacBook Pro (M4 Pro - 64GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '64GB Unified Memory', vram: 51, memoryBandwidth: 273, estimatedPriceUSD: 2599, powerConsumptionWatts: 35, tpsScaling: 0.90, description: 'Solid mobile developer workspace carrying efficient M4 cores.' },
+      { id: 'apple-m4-base', name: 'Mac Mini / MacBook (M4 - 32GB)', category: 'mac', platformType: 'Unified Mac Desktop/Laptop', memoryType: '32GB Unified Memory', vram: 25, memoryBandwidth: 150, estimatedPriceUSD: 999, powerConsumptionWatts: 25, tpsScaling: 0.89, description: 'Insanely cost-effective compact desk system. Handles lightweight models cleanly.' },
+      
+      // ==================== M3 GENERATION ====================
+      { id: 'apple-m3-ultra', name: 'Mac Studio (M3 Ultra)', category: 'mac', platformType: 'Unified Mac Desktop', memoryType: '192GB Unified Memory', vram: 153, memoryBandwidth: 800, estimatedPriceUSD: 5499, powerConsumptionWatts: 120, tpsScaling: 0.90, description: 'Corporate workspace layout. Heavy workstation designed for sustained localized serving.' },
+      { id: 'apple-m3-max', name: 'MacBook Pro (M3 Max - 128GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '128GB Unified Memory', vram: 102, memoryBandwidth: 400, estimatedPriceUSD: 3999, powerConsumptionWatts: 45, tpsScaling: 0.88, description: 'Outstanding developer workstation. Unified memory lines bypass PCI transfer bottlenecks.' },
+      { id: 'apple-m3-pro', name: 'MacBook Pro (M3 Pro - 36GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '36GB Unified Memory', vram: 28, memoryBandwidth: 150, estimatedPriceUSD: 2399, powerConsumptionWatts: 35, tpsScaling: 0.88, description: 'Elegant mobile system. Runs 14B parameter models silently.' },
+      { id: 'apple-m3-base', name: 'MacBook Air (M3 - 24GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '24GB Unified Memory', vram: 19, memoryBandwidth: 100, estimatedPriceUSD: 1499, powerConsumptionWatts: 15, tpsScaling: 0.84, description: 'Fanless continuous assistant, handles quantized 8B nodes easily.' },
+      
+      // ==================== M2 GENERATION ====================
+      { id: 'apple-m2-ultra', name: 'Mac Studio (M2 Ultra - 192GB)', category: 'mac', platformType: 'Unified Mac Desktop', memoryType: '192GB Unified Memory', vram: 153, memoryBandwidth: 800, estimatedPriceUSD: 5299, powerConsumptionWatts: 120, tpsScaling: 0.89, description: 'Legendary Mac workstation. Safely holds enormous parameters structures inside fast RAM buffers.' },
+      { id: 'apple-m2-max', name: 'MacBook Pro (M2 Max - 96GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '96GB Unified Memory', vram: 76, memoryBandwidth: 400, estimatedPriceUSD: 3499, powerConsumptionWatts: 40, tpsScaling: 0.87, description: 'Highly successful previous-generation benchmark. Splits 34B MoEs cleanly.' },
+      { id: 'apple-m2-pro', name: 'MacBook Pro (M2 Pro - 32GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '32GB Unified Memory', vram: 25, memoryBandwidth: 200, estimatedPriceUSD: 1999, powerConsumptionWatts: 30, tpsScaling: 0.86, description: 'Durable system, outputting highly stable generation speeds over local files.' },
+      { id: 'apple-m2-base', name: 'MacBook Air / Mini (M2 - 24GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '24GB Unified Memory', vram: 19, memoryBandwidth: 100, estimatedPriceUSD: 1299, powerConsumptionWatts: 15, tpsScaling: 0.83, description: 'Quiet travel assistant for simple prompts and summary reading.' },
+      
+      // ==================== M1 GENERATION ====================
+      { id: 'mac-studio-m1-ultra', name: 'Mac Studio (M1 Ultra - Legacy)', category: 'mac', platformType: 'Unified Mac Desktop', memoryType: '128GB Unified Memory', vram: 102, memoryBandwidth: 800, estimatedPriceUSD: 3199, powerConsumptionWatts: 110, tpsScaling: 0.89, description: 'Amazing secondary market values. Huge 800 GB/s bus beats newer systems easily.' },
+      { id: 'apple-m1-max', name: 'MacBook Pro (M1 Max - 64GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '64GB Unified Memory', vram: 51, memoryBandwidth: 400, estimatedPriceUSD: 1899, powerConsumptionWatts: 35, tpsScaling: 0.86, description: 'Outstanding used value with highly efficient 400 GB/s bus rates.' },
+      { id: 'apple-m1-pro', name: 'MacBook Pro (M1 Pro - 32GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '32GB Unified Memory', vram: 25, memoryBandwidth: 200, estimatedPriceUSD: 1499, powerConsumptionWatts: 30, tpsScaling: 0.85, description: 'Excellent budget entry Mac. Highly responsive workflows.' },
+      { id: 'apple-m1-base', name: 'MacBook Air (M1 - 16GB)', category: 'mac', platformType: 'Unified Mac Laptop', memoryType: '16GB Unified Memory', vram: 12, memoryBandwidth: 68, estimatedPriceUSD: 799, powerConsumptionWatts: 10, tpsScaling: 0.81, description: 'The original silicon star. Quiet option for exploring lightweight 3B models.' },
+      
+      // --- PC CPU CONFIGS (CPU-ONLY INFERENCE) ---
+      { id: 'pc-cpu-ddr5-dual', name: 'Typical PC (DDR5 Dual-Channel)', category: 'pc_cpu', platformType: 'Intel/AMD System (CPU Only)', memoryType: '64GB DDR5-6000', vram: 64, memoryBandwidth: 96, estimatedPriceUSD: 1200, powerConsumptionWatts: 150, tpsScaling: 0.65, description: 'Pure system RAM run. Fits giant parameter files, but bus speeds bottleneck tokens.' },
+      { id: 'pc-cpu-ddr4-dual', name: 'Typical PC (DDR4 Dual-Channel)', category: 'pc_cpu', platformType: 'Intel/AMD System (CPU Only)', memoryType: '32GB DDR4-3200', vram: 32, memoryBandwidth: 50, estimatedPriceUSD: 700, powerConsumptionWatts: 125, tpsScaling: 0.60, description: 'Budget computer setup. Perfectly runs models but speed is limited.' },
+      { id: 'workstation-cpu-octa', name: 'Threadripper Workstation (Octa-Channel)', category: 'pc_cpu', platformType: 'AMD Threadripper Pro', memoryType: '256GB DDR5 Octa-Channel', vram: 256, memoryBandwidth: 384, estimatedPriceUSD: 6000, powerConsumptionWatts: 350, tpsScaling: 0.75, description: 'Multi-channel workstation titan. Runs heavy open weights directly in system RAM speeds.' }
     ];
 
-    // --- VECTOR MINIATURE SYSTEM ICONS COMPONENTS ---
-    const Icon = ({ name, className = "h-4 w-4" }) => {
-      const getSvgContent = () => {
-        switch (name) {
-          case 'search':
-            return <g><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></g>;
-          case 'cpu':
-            return <g><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></g>;
-          case 'layers':
-            return <g><path d="m12 3-10 5 10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12 10 5 10-5"/></g>;
-          case 'activity':
-            return <g><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></g>;
-          case 'harddrive':
-            return <g><rect width="20" height="8" x="2" y="3" rx="2"/><rect width="20" height="8" x="2" y="13" rx="2"/><path d="M6 7h.01M6 17h.01"/></g>;
-          case 'link':
-            return <g><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></g>;
-          case 'sparkles':
-            return <g><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></g>;
-          case 'check':
-            return <g><polyline points="20 6 9 17 4 12"/></g>;
-          case 'alert':
-            return <g><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></g>;
-          case 'zap':
-            return <g><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></g>;
-          case 'trending':
-            return <g><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></g>;
-          case 'coins':
-            return <g><circle cx="8" cy="8" r="6"/><circle cx="18" cy="18" r="4"/><path d="M12 18a6 6 0 0 0-6-6"/><path d="M18 12a10 10 0 0 0-10-10"/></g>;
-          case 'book':
-            return <g><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></g>;
-          case 'terminal':
-            return <g><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></g>;
-          case 'compare':
-            return <g><path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/></g>;
-          case 'settings':
-            return <g><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g>;
-          case 'help':
-            return <g><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></g>;
-          case 'laptop':
-            return <g><path d="M20 16V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12"/><line x1="2" x2="22" y1="20" y2="20"/><line x1="12" x2="12" y1="16" y2="20"/></g>;
-          case 'sliders':
-            return <g><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></g>;
-          default:
-            return <g><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="16"/></g>;
-        }
-      };
-
-      return (
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          className={className}
-        >
-          {getSvgContent()}
-        </svg>
-      );
-    };
-
-    // --- CALCULATION LOGIC ENGINE ---
+    // ==================== CALCULATION LAYER ====================
     function calculateMemoryFootprint(model, quant, contextWindow) {
       const formatOverheadFactor = 1.05;
       const weightsSizeInGB = (model.params * quant.bpw * formatOverheadFactor) / 8;
@@ -458,8 +248,8 @@
           estimatedSpeed = (hardware.memoryBandwidth / memoryInfo.weightsSize) * hardware.tpsScaling;
         } else if (totalRequired <= maxSystemMemory) {
           isCompatible = 'partial';
-          explanation = `Fits with warning. Fits in general System RAM, but overflows dedicated high-speed GPU threshold. macOS swap will introduce minor paging limits.`;
-          bottleneck = 'System Memory Paging';
+          explanation = `Fits with warning. Runs on Mac Unified Memory, but exceeds standard GPU-allocated threshold. macOS will dynamically page memory, causing minor performance degradation.`;
+          bottleneck = 'System Memory Paging / OS Swap';
           const speedRaw = (hardware.memoryBandwidth / memoryInfo.weightsSize) * hardware.tpsScaling;
           estimatedSpeed = speedRaw * 0.65;
         } else {
@@ -471,8 +261,8 @@
       } else if (hardware.category === 'pc_cpu') {
         if (totalRequired <= actualHardwareVram) {
           isCompatible = 'yes';
-          explanation = `Compatible on CPU. Fits cleanly within system RAM (${actualHardwareVram}GB). Experience steady CPU processing bound to DRAM bandwidth limits.`;
-          bottleneck = 'System RAM Speeds (CPU-bound)';
+          explanation = `Compatible on CPU. Fits cleanly within system RAM (${actualHardwareVram}GB). It will run, but execution is bound to system RAM speeds.`;
+          bottleneck = 'System RAM Memory Bandwidth (CPU-bound)';
           estimatedSpeed = (hardware.memoryBandwidth / memoryInfo.weightsSize) * hardware.tpsScaling;
         } else {
           isCompatible = 'no';
@@ -483,26 +273,26 @@
       } else {
         if (totalRequired <= actualHardwareVram) {
           isCompatible = 'yes';
-          explanation = `Optimal! The model fits entirely inside dedicated High-Speed VRAM (${actualHardwareVram}GB). Fast GPU execution is configured.`;
-          bottleneck = 'GPU Compute Limits';
+          explanation = `Optimal! The model fits entirely inside dedicated High-Speed VRAM (${actualHardwareVram}GB). Fast execution is guaranteed.`;
+          bottleneck = 'GPU Core Compute Limit';
           estimatedSpeed = (hardware.memoryBandwidth / memoryInfo.weightsSize) * hardware.tpsScaling;
         } else {
-          const assumedSystemRam = 64;
+          const assumedSystemRam = 64; 
           if (totalRequired <= (actualHardwareVram + assumedSystemRam)) {
             isCompatible = 'partial';
             const vramForWeights = Math.max(0, actualHardwareVram - memoryInfo.kvCacheSize - memoryInfo.overhead);
             const weightsInVramRatio = Math.min(1, vramForWeights / memoryInfo.weightsSize);
             const weightsInCpuRatio = 1 - weightsInVramRatio;
             
-            explanation = `Partial CPU Offload. Model weights size (${memoryInfo.weightsSize}GB) exceeds VRAM (${actualHardwareVram}GB). Llama.cpp will offload ${(weightsInCpuRatio * 100).toFixed(0)}% of layers to Normal system RAM (CPU).`;
-            bottleneck = 'PCIe Bus & CPU Memory Sync';
+            explanation = `Partial CPU Offload. Model weights size (${memoryInfo.weightsSize}GB) exceeds dedicated VRAM (${actualHardwareVram}GB). Llama.cpp will offload ${(weightsInCpuRatio * 100).toFixed(0)}% of layers to your system RAM (CPU), lowering token outputs significantly.`;
+            bottleneck = 'PCIe Bus Overhead / CPU RAM Bandwidth';
             
-            const cpuBandwidth = 80;
+            const cpuBandwidth = 80; 
             const weightedBandwidth = 1 / ((weightsInVramRatio / hardware.memoryBandwidth) + (weightsInCpuRatio / cpuBandwidth));
             estimatedSpeed = (weightedBandwidth / memoryInfo.weightsSize) * hardware.tpsScaling * 0.45;
           } else {
             isCompatible = 'no';
-            explanation = `Insufficient memory! Model occupies ${totalRequired}GB, but GPU VRAM (${actualHardwareVram}GB) and system RAM cannot sustain execution.`;
+            explanation = `Insufficient combined memory! Model occupies ${totalRequired}GB, but GPU VRAM (${actualHardwareVram}GB) and normal system RAM cannot sustain execution.`;
             bottleneck = 'Out of Memory';
             estimatedSpeed = 0;
           }
@@ -512,554 +302,516 @@
       if (estimatedSpeed > 150) {
         estimatedSpeed = 150 - (memoryInfo.weightsSize * 0.8);
       }
-      estimatedSpeed = Math.max(0, Math.round(estimatedSpeed * 10) / 10);
+      estimatedSpeed = Math.max(0, Number(estimatedSpeed.toFixed(1)));
 
       if (isCompatible === 'yes') {
-        recommendations.push("Perfect setup! No changes needed. Boost context window sizes to experiment.");
+        recommendations.push("Perfect setup! No changes needed. Increase context widths or try thicker quants to boost quality.");
       } else if (isCompatible === 'partial') {
-        recommendations.push("To speed up generation, purchase a higher-VRAM GPU or select a tighter quantization format like Q4_K_M.");
-      } else if (isCompatible === 'no') {
-        recommendations.push("Highly suggest stepping down to a smaller parameter model class (e.g. 8B parameter layouts).");
+        recommendations.push("To speed up generation, buy a larger-VRAM GPU or choose a tighter quantization format like Q4_K_M.");
+      } else {
+        recommendations.push("Suggest stepping down parameters size (e.g. Llama 8b or Phi 14B instead of huge 70B models).");
       }
 
-      return {
-        modelName: model.name,
-        modelParams: model.params,
-        quantName: quant.name,
-        bpw: quant.bpw,
-        requiredVRAM: totalRequired,
-        isCompatible,
-        explanation,
-        estimatedSpeed,
-        bottleneck,
-        recommendations
-      };
+      return { modelName: model.name, modelParams: model.params, quantName: quant.name, bpw: quant.bpw, requiredVRAM: totalRequired, isCompatible, explanation, estimatedSpeed, bottleneck, recommendations };
     }
 
-    // --- MAIN REACT COMPONENT ---
-    function App() {
-      const [activeTab, setActiveTab] = useState('catalog');
-
-      // Catalog Tab State
-      const [searchTerm, setSearchTerm] = useState('');
-      const [devFilter, setDevFilter] = useState('All');
-      const [sizeFilter, setSizeFilter] = useState('All');
-      const [categoryFilter, setCategoryFilter] = useState('All');
-      const [selectedModelDetails, setSelectedModelDetails] = useState('deepseek-r1');
-
-      // Calculator Tab State
-      const [calcModelId, setCalcModelId] = useState('llama-3.1-8b');
-      const [calcQuantKey, setCalcQuantKey] = useState('q4_k_m');
-      const [calcHardwareId, setCalcHardwareId] = useState('rtx-4070-ti-super');
-      const [calcContextWindow, setCalcContextWindow] = useState(8192);
-      const [customVramEnabled, setCustomVramEnabled] = useState(false);
-      const [customVramValue, setCustomVramValue] = useState(16);
-
-      // Matcher Tab State
-      const [compModelId, setCompModelId] = useState('llama-3.3-70b');
-      const [compQuantKey, setCompQuantKey] = useState('q4_k_m');
-      const [compHardwareIdA, setCompHardwareIdA] = useState('rtx-4090');
-      const [compHardwareIdB, setCompHardwareIdB] = useState('macbook-pro-max');
-
-      // Rig Analyzer Tab State
-      const [rigPlatform, setRigPlatform] = useState('pc_gpu');
-      const [rigVram, setRigVram] = useState(12);
-      const [rigRam, setRigRam] = useState(32);
-      const [rigBandwidth, setRigBandwidth] = useState(504);
-      const [rigCpuRamSpeed, setRigCpuRamSpeed] = useState(80);
-
-      // --- DERIVED MEMOIZED STATE ---
-      const filteredModels = useMemo(() => {
-        return MODELS.filter(model => {
-          const matchesSearch = model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                model.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                model.developer.toLowerCase().includes(searchTerm.toLowerCase());
-          const matchesDev = devFilter === 'All' || model.developer === devFilter;
-          const matchesCategory = categoryFilter === 'All' || model.category === categoryFilter;
-          
-          let matchesSize = true;
-          if (sizeFilter === 'under10') matchesSize = model.params < 10;
-          else if (sizeFilter === '10to50') matchesSize = model.params >= 10 && model.params <= 50;
-          else if (sizeFilter === '50to100') matchesSize = model.params > 50 && model.params <= 100;
-          else if (sizeFilter === 'above100') matchesSize = model.params > 100;
-
-          return matchesSearch && matchesDev && matchesSize && matchesCategory;
-        });
-      }, [searchTerm, devFilter, sizeFilter, categoryFilter]);
-
-      const activeModelDetails = useMemo(() => {
-        return MODELS.find(m => m.id === selectedModelDetails) || MODELS[0];
-      }, [selectedModelDetails]);
-
-      // Calculator derived states
-      const selectedCalcModel = useMemo(() => MODELS.find(m => m.id === calcModelId) || MODELS[0], [calcModelId]);
-      const selectedCalcQuant = useMemo(() => QUANTIZATIONS.find(q => q.key === calcQuantKey) || QUANTIZATIONS[0], [calcQuantKey]);
-      const selectedCalcHardware = useMemo(() => HARDWARE_PROFILES.find(h => h.id === calcHardwareId) || HARDWARE_PROFILES[0], [calcHardwareId]);
-
-      const currentMemoryReport = useMemo(() => {
-        return calculateMemoryFootprint(selectedCalcModel, selectedCalcQuant, calcContextWindow);
-      }, [selectedCalcModel, selectedCalcQuant, calcContextWindow]);
-
-      const calculatorResult = useMemo(() => {
-        return evaluateHardwareMatch(
-          selectedCalcModel,
-          selectedCalcQuant,
-          calcContextWindow,
-          selectedCalcHardware,
-          customVramEnabled ? customVramValue : undefined
-        );
-      }, [selectedCalcModel, selectedCalcQuant, calcContextWindow, selectedCalcHardware, customVramEnabled, customVramValue]);
-
-      // Matcher/Compare derived states
-      const selectedCompModel = useMemo(() => MODELS.find(m => m.id === compModelId) || MODELS[0], [compModelId]);
-      const selectedCompQuant = useMemo(() => QUANTIZATIONS.find(q => q.key === compQuantKey) || QUANTIZATIONS[0], [compQuantKey]);
-      const compHardwareA = useMemo(() => HARDWARE_PROFILES.find(h => h.id === compHardwareIdA) || HARDWARE_PROFILES[0], [compHardwareIdA]);
-      const compHardwareB = useMemo(() => HARDWARE_PROFILES.find(h => h.id === compHardwareIdB) || HARDWARE_PROFILES[0], [compHardwareIdB]);
-
-      const compMatchA = useMemo(() => {
-        return evaluateHardwareMatch(selectedCompModel, selectedCompQuant, 8192, compHardwareA);
-      }, [selectedCompModel, selectedCompQuant, compHardwareA]);
-
-      const compMatchB = useMemo(() => {
-        return evaluateHardwareMatch(selectedCompModel, selectedCompQuant, 8192, compHardwareB);
-      }, [selectedCompModel, selectedCompQuant, compHardwareB]);
-
-      // Rig Analyzer predictions
-      const rigAnalysisReport = useMemo(() => {
-        return MODELS.map(model => {
-          const quantReports = QUANTIZATIONS.map(quant => {
-            const isMac = rigPlatform === 'mac';
-            const isCpuOnly = rigPlatform === 'pc_cpu';
-            const tempHardware = {
-              id: 'custom-rig',
-              name: 'Your Custom Rig',
-              category: isCpuOnly ? 'pc_cpu' : (isMac ? 'mac' : 'gpu'),
-              platformType: isCpuOnly ? 'CPU Workstation' : (isMac ? 'Mac unified' : 'GPU Rig'),
-              memoryType: isCpuOnly ? 'DRAM' : (isMac ? 'Unified RAM' : 'VRAM'),
-              vram: isCpuOnly ? rigRam : (isMac ? Math.floor(rigRam * 0.8) : rigVram),
-              memoryBandwidth: isCpuOnly ? rigCpuRamSpeed : (isMac ? rigBandwidth : rigBandwidth),
-              estimatedPriceUSD: 0,
-              powerConsumptionWatts: 0,
-              tpsScaling: isCpuOnly ? 0.65 : (isMac ? 0.88 : 0.92)
-            };
-            const evalMatch = evaluateHardwareMatch(model, quant, 8192, tempHardware);
-            return {
-              quantKey: quant.key,
-              quantName: quant.name,
-              requiredVRAM: evalMatch.requiredVRAM,
-              isCompatible: evalMatch.isCompatible,
-              estimatedSpeed: evalMatch.estimatedSpeed,
-            };
-          });
-          return { model, quantReports };
-        });
-      }, [rigPlatform, rigVram, rigRam, rigBandwidth, rigCpuRamSpeed]);
-
-      const applyRigPreset = (preset) => {
-        if (preset === 'starter') {
-          setRigPlatform('pc_gpu'); setRigVram(12); setRigRam(16); setRigBandwidth(360);
-        } else if (preset === 'mid') {
-          setRigPlatform('pc_gpu'); setRigVram(16); setRigRam(32); setRigBandwidth(672);
-        } else if (preset === 'extreme') {
-          setRigPlatform('pc_gpu'); setRigVram(24); setRigRam(64); setRigBandwidth(1008);
-        } else if (preset === 'mac-m-pro') {
-          setRigPlatform('mac'); setRigVram(28); setRigRam(36); setRigBandwidth(150);
-        } else if (preset === 'mac-m-max') {
-          setRigPlatform('mac'); setRigVram(102); setRigRam(128); setRigBandwidth(400);
-        } else if (preset === 'mac-m-ultra') {
-          setRigPlatform('mac'); setRigVram(153); setRigRam(192); setRigBandwidth(800);
-        } else if (preset === 'cpu-ddr4') {
-          setRigPlatform('pc_cpu'); setRigVram(32); setRigRam(32); setRigCpuRamSpeed(48);
-        } else if (preset === 'cpu-ddr5') {
-          setRigPlatform('pc_cpu'); setRigVram(64); setRigRam(64); setRigCpuRamSpeed(80);
+    // ==================== SYSTEM MINI HERO ICONS ====================
+    const Icon = ({ name, className = "h-4 w-4" }) => {
+      const getSvgContent = () => {
+        switch (name) {
+          case 'search':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></g>;
+          case 'cpu':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></g>;
+          case 'layers':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><path d="m12 3-10 5 10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12-10 5-10-5M2 12 10 5 10-5"/></g>;
+          case 'activity':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></g>;
+          case 'harddrive':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><rect width="20" height="8" x="2" y="3" rx="2"/><rect width="20" height="8" x="2" y="13" rx="2"/><path d="M6 7h.01M6 17h.01"/></g>;
+          case 'link':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></g>;
+          case 'sparkles':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></g>;
+          case 'check':
+            return <g stroke="currentColor" strokeWidth="2.5" fill="none"><polyline points="20 6 9 17 4 12"/></g>;
+          case 'alert':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></g>;
+          case 'zap':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></g>;
+          case 'terminal':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></g>;
+          case 'compare':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/></g>;
+          case 'settings':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g>;
+          case 'sliders':
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></g>;
+          default:
+            return <g stroke="currentColor" strokeWidth="2" fill="none"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="16"/></g>;
         }
       };
 
       return (
-        <div className="flex flex-col min-h-screen">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className={className}>
+          {getSvgContent()}
+        </svg>
+      );
+    };
+
+    // ==================== MAIN SYSTEM APP PORTAL ====================
+    function App() {
+      const [activeTab, setActiveTab] = useState('catalog');
+
+      // --- Catalog States ---
+      const [searchTerm, setSearchTerm] = useState('');
+      const [selectedDev, setSelectedDev] = useState('All');
+      const [selectedCategory, setSelectedCategory] = useState('All');
+      const [selectedModel, setSelectedModel] = useState(MODELS[0]);
+
+      // --- Calculator States ---
+      const [calcModel, setCalcModel] = useState(MODELS[0]);
+      const [calcQuant, setCalcQuant] = useState(QUANTIZATIONS[4]); // Q4_K_M
+      const [calcContext, setCalcContext] = useState(8192);
+      const [calcHardware, setCalcHardware] = useState(HARDWARE_PROFILES[3]); // RTX 4090
+
+      // --- Comparer States ---
+      const [compModel, setCompModel] = useState(MODELS[2]); // Llama 3.3 70B
+      const [compQuant, setCompQuant] = useState(QUANTIZATIONS[4]); // Q4_K_M
+      const [compContext, setCompContext] = useState(8192);
+      const [compHardwareA, setCompHardwareA] = useState(HARDWARE_PROFILES[3]); // RTX 4090
+      const [compHardwareB, setCompHardwareB] = useState(HARDWARE_PROFILES[50]); // M3 Max 128GB
+
+      // --- Analyzer States ---
+      const [rigPlatform, setRigPlatform] = useState('pc_gpu');
+      const [rigVram, setRigVram] = useState(16);
+      const [rigRam, setRigRam] = useState(32);
+      const [rigBandwidth, setRigBandwidth] = useState(672);
+      const [rigCpuRamSpeed, setRigCpuRamSpeed] = useState(80);
+
+      // --- Catalog Filter Handler ---
+      const filteredModels = useMemo(() => {
+        return MODELS.filter(m => {
+          const matchText = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.developer.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchDev = selectedDev === 'All' || m.developer === selectedDev;
+          const matchCat = selectedCategory === 'All' || m.category === selectedCategory;
+          return matchText && matchDev && matchCat;
+        });
+      }, [searchTerm, selectedDev, selectedCategory]);
+
+      // --- Developer List ---
+      const developers = ['All', 'Meta', 'Google', 'Mistral', 'Qwen', 'Microsoft', 'Cohere', 'DeepSeek'];
+
+      // --- Evaluation results computed lazily ---
+      const calcResult = useMemo(() => {
+        return evaluateHardwareMatch(calcModel, calcQuant, calcContext, calcHardware);
+      }, [calcModel, calcQuant, calcContext, calcHardware]);
+
+      const compResultA = useMemo(() => {
+        return evaluateHardwareMatch(compModel, compQuant, compContext, compHardwareA);
+      }, [compModel, compQuant, compContext, compHardwareA]);
+
+      const compResultB = useMemo(() => {
+        return evaluateHardwareMatch(compModel, compQuant, compContext, compHardwareB);
+      }, [compModel, compQuant, compContext, compHardwareB]);
+
+      // --- Multi-Matrix setup report ---
+      const rigAnalysisReport = useMemo(() => {
+        const customHardwareObj = {
+          id: 'custom-user-rig',
+          name: rigPlatform === 'pc_gpu' ? 'Custom Discrete GPU Setup' : (rigPlatform === 'mac' ? 'Custom Mac Unified' : 'Custom CPU Rig'),
+          category: rigPlatform === 'pc_gpu' ? 'gpu' : (rigPlatform === 'mac' ? 'mac' : 'pc_cpu'),
+          platformType: rigPlatform === 'pc_gpu' ? 'NVIDIA/AMD Discrete' : 'Mac M-Series Unified',
+          memoryType: 'LPDDR/GDDR/DDR',
+          vram: rigPlatform === 'pc_gpu' ? rigVram : (rigPlatform === 'mac' ? Math.round(rigRam * 0.8) : rigRam),
+          memoryBandwidth: rigPlatform === 'pc_cpu' ? rigCpuRamSpeed : rigBandwidth,
+          estimatedPriceUSD: 0,
+          powerConsumptionWatts: 0,
+          tpsScaling: 0.90,
+          description: 'Your custom configuration parameters.'
+        };
+
+        return MODELS.map(model => {
+          const quantReports = ['fp16', 'q8_0', 'q5_k_m', 'q4_k_m'].map(quantKey => {
+            const quantObj = QUANTIZATIONS.find(q => q.key === quantKey);
+            const evaluation = evaluateHardwareMatch(model, quantObj, 8192, customHardwareObj);
+            return {
+              quantKey,
+              isCompatible: evaluation.isCompatible,
+              estimatedSpeed: evaluation.estimatedSpeed,
+              requiredVRAM: evaluation.requiredVRAM
+            };
+          });
+
+          return { model, quantReports };
+        });
+      }, [rigPlatform, rigVram, rigRam, rigBandwidth, rigCpuRamSpeed]);
+
+      return (
+        <div className="min-h-screen flex flex-col font-sans">
           
-          {/* HEADER SECTION */}
-          <header className="bg-[#FDFCFB] border-b border-[#E5E2DD] pt-10 pb-8 px-4">
-            <div className="max-w-7xl mx-auto text-center space-y-4">
-              <div className="flex flex-col items-center justify-center space-y-1">
-                <span className="text-[10px] font-mono tracking-[0.25em] text-[#8C8881] uppercase font-bold">
-                  The Self-Hosting Resource Engine • Volume I
-                </span>
-                <div className="editorial-sep w-24"></div>
+          {/* TOP PRIMARY BAR */}
+          <header className="bg-white border-b border-[#1A1A1A] py-6 px-4 shrink-0 shadow-sm sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#1A1A1A] text-[#F9F7F2] text-[10px] font-mono tracking-wider px-2 py-0.5 uppercase font-bold">STANDALONE DATABASE</span>
+                  <h1 className="text-xl font-bold font-display uppercase tracking-tight text-[#1A1A1A]">AI Model Hardware Correlation Matcher</h1>
+                </div>
+                <p className="text-xs text-[#5C5852] mt-0.5 leading-relaxed font-sans">Offline-Enabled Interactive Inference Matrix, Spec Lists, and Context Memory Evaluator</p>
               </div>
-              <h1 className="text-3xl md:text-5xl font-display font-medium tracking-tight text-[#1A1A1A] italic">
-                Hardware Correlation For Local AI Model Deployment
-              </h1>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs font-mono text-[#5C5852] border-t border-b border-[#E5E2DD] py-2.5 max-w-2xl mx-auto uppercase tracking-wider">
-                <span>Published Bi-Annually</span>
-                <span className="hidden sm:inline text-[#8C8881] font-sans">•</span>
-                <span>June 2026 Edition</span>
-                <span className="hidden sm:inline text-[#8C8881] font-sans">•</span>
-                <span>Comprehensive Inference Matrix</span>
-              </div>
+
+              {/* NAVIGATION TABS BUTTONS */}
+              <nav className="flex flex-wrap gap-1 bg-[#F2EFE9] p-1 border border-[#E5E2DD]">
+                <button 
+                  onClick={() => setActiveTab('catalog')} 
+                  className={`px-4 py-1.5 text-xs font-mono uppercase font-bold transition-all ${activeTab === 'catalog' ? 'bg-[#1A1A1A] text-white' : 'text-[#5C5852] hover:bg-[#E5E2DD] hover:text-black'}`}
+                >
+                  1. Model Catalog
+                </button>
+                <button 
+                  onClick={() => setActiveTab('calculator')} 
+                  className={`px-4 py-1.5 text-xs font-mono uppercase font-bold transition-all ${activeTab === 'calculator' ? 'bg-[#1A1A1A] text-white' : 'text-[#5C5852] hover:bg-[#E5E2DD] hover:text-black'}`}
+                >
+                  2. Footprint Calculator
+                </button>
+                <button 
+                  onClick={() => setActiveTab('compare')} 
+                  className={`px-4 py-1.5 text-xs font-mono uppercase font-bold transition-all ${activeTab === 'compare' ? 'bg-[#1A1A1A] text-white' : 'text-[#5C5852] hover:bg-[#E5E2DD] hover:text-black'}`}
+                >
+                  3. Hardware Comparer
+                </button>
+                <button 
+                  onClick={() => setActiveTab('analyzer')} 
+                  className={`px-4 py-1.5 text-xs font-mono uppercase font-bold transition-all ${activeTab === 'analyzer' ? 'bg-[#1A1A1A] text-white' : 'text-[#5C5852] hover:bg-[#E5E2DD] hover:text-black'}`}
+                >
+                  4. Setup Multi-Matrix
+                </button>
+                <button 
+                  onClick={() => setActiveTab('guides')} 
+                  className={`px-4 py-1.5 text-xs font-mono uppercase font-bold transition-all ${activeTab === 'guides' ? 'bg-[#1A1A1A] text-white' : 'text-[#5C5852] hover:bg-[#E5E2DD] hover:text-black'}`}
+                >
+                  5. Guides & Terminal
+                </button>
+              </nav>
             </div>
           </header>
 
-          {/* TAB CONTROLS NAVIGATION */}
-          <div className="border-b border-[#E5E2DD] bg-[#F9F7F2]/60 sticky top-0 z-50 backdrop-blur-md">
-            <div className="max-w-7xl mx-auto px-4">
-              <nav className="flex flex-wrap justify-center -mb-px">
-                {[
-                  { id: 'catalog', label: 'Open Weight Catalog', icon: 'layers' },
-                  { id: 'calculator', label: 'Inference Calculator', icon: 'zap' },
-                  { id: 'compare', label: 'Hardware Matcher', icon: 'compare' },
-                  { id: 'analyzer', label: 'My Setup Analyzer', icon: 'sliders' },
-                  { id: 'guides', label: 'Deployment Blueprint', icon: 'book' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-3.5 border-b-2 text-[11px] font-mono uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer ${
-                      activeTab === tab.id 
-                        ? 'border-[#1A1A1A] text-[#1A1A1A] font-bold bg-[#FDFCFB]/50' 
-                        : 'border-transparent text-[#5C5852] hover:text-[#1A1A1A] hover:border-[#8C8881]'
-                    }`}
-                  >
-                    <Icon name={tab.icon} className="h-3.5 w-3.5" />
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-
-          {/* APPLICATION MAIN CONTAINER */}
-          <main className="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
             
-            {/* 1. CATALOG TAB */}
+            {/* 1. OPEN WEIGHTS CATALOG TAB */}
             {activeTab === 'catalog' && (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* Search / Filters Panel */}
-                <div id="catalog-filters" className="bg-white p-6 border border-[#E5E2DD] space-y-4">
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                    <div className="relative flex-grow max-w-xl">
-                      <Icon name="search" className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#8C8881]" />
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search models, organizations, properties..."
-                        className="w-full pl-10 pr-4 py-2 rounded-none border border-[#E5E2DD] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-sm bg-white"
-                      />
-                    </div>
-                    <div className="text-[#5C5852] text-xs font-mono uppercase tracking-wider">
-                      Catalog size: {filteredModels.length} of {MODELS.length} Models
-                    </div>
-                  </div>
+                {/* Search and List Column */}
+                <div className="lg:col-span-5 bg-white p-5 border border-[#E5E2DD] space-y-5">
+                  <div className="space-y-3">
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-[#5C5852] font-mono flex items-center gap-1.5">
+                      <Icon name="search" className="h-4 w-4" />
+                      Filter Open-Weight Catalog ({MODELS.length} Models total)
+                    </h2>
+                    
+                    <input 
+                      type="text" 
+                      placeholder="Search parameters or devs (e.g. Meta)..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="px-3 py-2 border border-[#E5E2DD] text-sm w-full bg-[#FDFCFB] focus:border-[#1A1A1A] focus:outline-none"
+                    />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#5C5852] font-mono">Developer Org</label>
-                      <select value={devFilter} onChange={(e) => setDevFilter(e.target.value)} className="px-3 py-2 border border-[#E5E2DD] text-sm bg-[#F9F7F2]/50">
-                        <option value="All">All Companies</option>
-                        <option value="Meta">Meta Llama</option>
-                        <option value="Google">Google Gemma</option>
-                        <option value="Mistral">Mistral AI</option>
-                        <option value="Qwen">Qwen / Alibaba</option>
-                        <option value="Microsoft">Microsoft Phi</option>
-                        <option value="Cohere">Cohere AI</option>
-                        <option value="DeepSeek">DeepSeek</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#5C5852] font-mono">Model Weight Size</label>
-                      <select value={sizeFilter} onChange={(e) => setSizeFilter(e.target.value)} className="px-3 py-2 border border-[#E5E2DD] text-sm bg-[#F9F7F2]/50">
-                        <option value="All">All Parameter Sizes</option>
-                        <option value="under10">Lightweight (&lt; 10 Billion)</option>
-                        <option value="10to50">Medium Scale (10B - 50B)</option>
-                        <option value="50to100">Large Workhorse (50B - 100B)</option>
-                        <option value="above100">Supercomputer Scales (&gt; 100B)</option>
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#5C5852] font-mono">Architectural Category</label>
-                      <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-3 py-2 border border-[#E5E2DD] text-sm bg-[#F9F7F2]/50 font-sans">
-                        <option value="All">All Capabilities</option>
-                        <option value="General">General LLM</option>
-                        <option value="Coding">Specialist Coding</option>
-                        <option value="Reasoning">Deep Chain Reasoner</option>
-                        <option value="Lightweight">Edge & Lightweight</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Main Split Matrix View */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  
-                  {/* Model Directory list */}
-                  <div className="lg:col-span-5 space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {filteredModels.length === 0 ? (
-                      <div className="bg-white p-12 border border-[#E5E2DD] text-center text-[#8C8881]">
-                        <Icon name="alert" className="h-8 w-8 mx-auto text-[#8C8881] mb-2" />
-                        No models match search filters.
-                      </div>
-                    ) : (
-                      filteredModels.map((model) => (
-                        <div
-                          key={model.id}
-                          onClick={() => setSelectedModelDetails(model.id)}
-                          className={`p-5 border transition-all cursor-pointer ${
-                            selectedModelDetails === model.id
-                              ? 'bg-[#F9F7F2] border-[#1A1A1A] ring-1 ring-[#1A1A1A]'
-                              : 'bg-white border-[#E5E2DD] hover:border-[#8C8881]'
-                          }`}
+                    {/* Quick filter lists */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <label className="text-[10px] font-mono text-[#8C8881] block mb-1">Developer</label>
+                        <select 
+                          value={selectedDev} 
+                          onChange={(e) => setSelectedDev(e.target.value)}
+                          className="px-2 py-1.5 border border-[#E5E2DD] bg-white w-full cursor-pointer"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 border border-[#E5E2DD] bg-[#FDFCFB] text-[10px] font-mono uppercase font-bold text-[#1a1a1a]">
-                                {model.developer}
-                              </span>
-                              <span className="text-[#8C8881] font-mono text-[11px]">{model.releaseDate}</span>
-                            </div>
-                            <span className="text-[#5C5852] font-mono text-xs font-semibold">
-                              {model.params}B {model.type === 'moe' ? 'MoE' : 'Params'}
-                            </span>
+                          {developers.map(dev => <option key={dev} value={dev}>{dev}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-[#8C8881] block mb-1">Architecture Category</label>
+                        <select 
+                          value={selectedCategory} 
+                          onChange={(e) => setSelectedCategory(e.target.value)}
+                          className="px-2 py-1.5 border border-[#E5E2DD] bg-white w-full cursor-pointer"
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="Reasoning">Reasoning Models</option>
+                          <option value="General">General / Instruct</option>
+                          <option value="Coding">Specialized Coding</option>
+                          <option value="Lightweight">Lightweight / Mobile</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List View */}
+                  <div className="border border-[#E5E2DD] max-h-[450px] overflow-y-auto divide-y divide-[#E5E2DD]">
+                    {filteredModels.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-[#8C8881]">No models match your filter requirements.</div>
+                    ) : (
+                      filteredModels.map(m => (
+                        <div 
+                          key={m.id} 
+                          onClick={() => setSelectedModel(m)}
+                          className={`p-3.5 text-xs text-left cursor-pointer transition-all ${selectedModel.id === m.id ? 'bg-[#F9F7F2] border-l-4 border-black' : 'hover:bg-[#FDFCFB]/80'}`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <span className="font-bold text-[#1A1A1A]">{m.name}</span>
+                            <span className="bg-[#E5E2DD] text-[9px] font-mono px-1.5 py-0.5 uppercase text-[#5C5852] font-semibold">{m.category}</span>
                           </div>
-                          <h3 className="mt-2 text-base font-semibold text-[#1A1A1A] font-serif italic">{model.name}</h3>
-                          <p className="mt-1 text-xs text-[#5C5852] line-clamp-1">{model.description}</p>
-                          <div className="mt-3.5 flex items-center gap-4 text-[11px] text-[#8C8881] font-mono border-t border-[#E5E2DD]/60 pt-2.5">
-                            {model.metrics.mmlu && <span>MMLU: <strong className="text-[#1A1A1A]">{model.metrics.mmlu}%</strong></span>}
-                            {model.metrics.humanEval && <span>Code: <strong className="text-[#1A1A1A]">{model.metrics.humanEval}%</strong></span>}
-                            <span>Ctx: <strong className="text-[#1A1A1A]">{(model.contextLength / 1000).toFixed(0)}k</strong></span>
+                          
+                          <div className="flex justify-between text-[#5C5852] text-[10px] font-mono mt-2 pt-1 border-t border-dashed border-neutral-200">
+                            <span>Dev: <strong>{m.developer}</strong></span>
+                            <span>Scale: <strong>{m.params}B Params</strong></span>
+                            {m.type === 'moe' && <span className="text-amber-700">MoE ({m.activeParams}B Active)</span>}
                           </div>
                         </div>
                       ))
                     )}
                   </div>
-
-                  {/* Detailed Model Info Panel */}
-                  <div className="lg:col-span-7 bg-white border border-[#E5E2DD] p-8 sticky top-24">
-                    <div className="border-b border-[#E5E2DD] pb-5">
-                      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-[#F9F7F2] border border-[#E5E2DD] text-[#1A1A1A] text-[10px] font-mono py-0.5 px-2.5 font-bold uppercase">
-                            {activeModelDetails.category}
-                          </span>
-                          <span className="bg-[#F9F7F2] border border-[#E5E2DD] text-[#5C5852] text-[10px] font-mono py-0.5 px-2.5">
-                            License: {activeModelDetails.license}
-                          </span>
-                        </div>
-                        <a href={activeModelDetails.huggingFaceUrl} target="_blank" className="font-mono text-xs text-[#5C5852] hover:text-[#1A1A1A] underline inline-flex items-center gap-1">
-                          Hugging Face <Icon name="link" className="h-3.5 w-3.5" />
-                        </a>
-                      </div>
-                      <h2 className="text-3xl font-bold font-display italic text-[#1A1A1A]">{activeModelDetails.name}</h2>
-                      <p className="mt-3 text-sm text-[#5C5852] leading-relaxed">{activeModelDetails.description}</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 border-b border-[#E5E2DD]">
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-[#8C8881] uppercase tracking-wider font-mono">Weights Details</h4>
-                        <div className="space-y-2 text-sm font-mono text-[#5C5852]">
-                          <div className="flex justify-between"><span>Parameters:</span><span className="font-semibold text-[#1A1A1A]">{activeModelDetails.params} Billion</span></div>
-                          <div className="flex justify-between"><span>Architecture:</span><span className="font-semibold text-[#1A1A1A] capitalize">{activeModelDetails.type}</span></div>
-                          {activeModelDetails.activeParams && <div className="flex justify-between"><span>Active Per-Token:</span><span className="font-semibold text-[#1A1A1A]">{activeModelDetails.activeParams}B</span></div>}
-                          <div className="flex justify-between"><span>Maximum Context:</span><span className="font-semibold text-[#1A1A1A]">{activeModelDetails.contextLength.toLocaleString()}</span></div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="text-xs font-bold text-[#8C8881] uppercase tracking-wider font-mono font-sans">Evaluation Metrics</h4>
-                        <div className="space-y-2">
-                          {activeModelDetails.metrics.mmlu && (
-                            <div>
-                              <div className="flex justify-between text-xs font-mono font-bold mb-1"><span>MMLU (General Acc)</span><span>{activeModelDetails.metrics.mmlu}%</span></div>
-                              <div className="w-full bg-[#F2EFE9] h-1"><div className="bg-[#1A1A1A] h-full" style={{ width: `${activeModelDetails.metrics.mmlu}%` }}></div></div>
-                            </div>
-                          )}
-                          {activeModelDetails.metrics.humanEval && (
-                            <div>
-                              <div className="flex justify-between text-xs font-mono font-bold mb-1"><span>HumanEval (Code)</span><span>{activeModelDetails.metrics.humanEval}%</span></div>
-                              <div className="w-full bg-[#F2EFE9] h-1"><div className="bg-[#5C5852] h-full" style={{ width: `${activeModelDetails.metrics.humanEval}%` }}></div></div>
-                            </div>
-                          )}
-                          {activeModelDetails.metrics.mathScore && (
-                            <div>
-                              <div className="flex justify-between text-xs font-mono font-bold mb-1"><span>MATH (Algebra)</span><span>{activeModelDetails.metrics.mathScore}%</span></div>
-                              <div className="w-full bg-[#F2EFE9] h-1"><div className="bg-[#8C8881] h-full" style={{ width: `${activeModelDetails.metrics.mathScore}%` }}></div></div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-5 flex items-center justify-between font-mono text-xs">
-                      <span className="text-[#8C8881]">Recommended Quantization Spec:</span>
-                      <strong className="text-[#1A1A1A] text-right font-semibold">{activeModelDetails.recommendedQuant}</strong>
-                    </div>
-                  </div>
-
                 </div>
 
-              </div>
-            )}
-
-            {/* 2. CALCULATOR TAB */}
-            {activeTab === 'calculator' && (
-              <div className="space-y-6">
-                
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  
-                  {/* Left Parameter Panel */}
-                  <div className="lg:col-span-5 bg-white p-6 border border-[#E5E2DD] space-y-6">
-                    <h3 className="text-lg font-serif italic border-b border-[#E5E2DD] pb-2 text-[#1A1A1A]">Calculator Parameters</h3>
-                    
-                    {/* Model Selector */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Target Open weights Model</label>
-                      <select value={calcModelId} onChange={(e) => setCalcModelId(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
-                        {MODELS.map(m => <option key={m.id} value={m.id}>{m.name} ({m.params}B)</option>)}
-                      </select>
+                {/* Selected Model Details Column */}
+                <div className="lg:col-span-7 bg-white p-6 border border-[#E5E2DD] space-y-6">
+                  <div className="border-b border-[#E5E2DD] pb-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <h2 className="text-2xl font-serif font-bold text-[#1A1A1A]">{selectedModel.name}</h2>
+                      <a href={selectedModel.huggingFaceUrl} target="_blank" className="font-mono text-[10px] text-neutral-500 hover:text-black underline flex items-center gap-1">
+                        Hugging Face Node <Icon name="link" className="h-3 w-3" />
+                      </a>
                     </div>
-
-                    {/* Quant selector */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Quantization Level</label>
-                      <select value={calcQuantKey} onChange={(e) => setCalcQuantKey(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
-                        {QUANTIZATIONS.map(q => <option key={q.key} value={q.key}>{q.name} - {q.qualityLoss} Loss</option>)}
-                      </select>
-                    </div>
-
-                    {/* Context length */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-mono font-bold text-[#5C5852]">
-                        <span>CONTEXT WINDOW WINDOW</span>
-                        <span>{calcContextWindow.toLocaleString()} tokens</span>
-                      </div>
-                      <input 
-                        type="range" min="1024" max="131072" step="1024" 
-                        value={calcContextWindow} onChange={(e) => setCalcContextWindow(Number(e.target.value))}
-                        className="w-full h-1 bg-[#F2EFE9] rounded-none appearance-none cursor-pointer accent-[#1A1A1A]"
-                      />
-                      <div className="flex justify-between text-[10px] font-mono text-[#8C8881]"><span>1k Standard</span><span>128k Super-long</span></div>
-                    </div>
-
-                    {/* Hardware Profile Selection */}
-                    <div className="space-y-3 pt-4 border-t border-[#E5E2DD]">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Hardware Setup</label>
-                        <div className="flex items-center gap-1.5">
-                          <input 
-                            type="checkbox" id="custom-vram-chk" checked={customVramEnabled} 
-                            onChange={(e) => setCustomVramEnabled(e.target.checked)}
-                            className="cursor-pointer"
-                          />
-                          <label htmlFor="custom-vram-chk" className="text-[10px] font-mono font-bold uppercase text-[#5C5852] cursor-pointer">Override RAM</label>
-                        </div>
-                      </div>
-
-                      {customVramEnabled ? (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-xs font-mono"><span>VRAM Allocation Limit:</span><span>{customVramValue} GB</span></div>
-                          <input 
-                            type="range" min="4" max="1024" step="4" 
-                            value={customVramValue} onChange={(e) => setCustomVramValue(Number(e.target.value))}
-                            className="w-full h-1 bg-[#F2EFE9] rounded-none appearance-none cursor-pointer accent-[#1A1A1A]"
-                          />
-                        </div>
-                      ) : (
-                        <select value={calcHardwareId} onChange={(e) => setCalcHardwareId(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
-                          {HARDWARE_PROFILES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                        </select>
-                      )}
-                    </div>
-
+                    <p className="text-xs text-[#5C5852] mt-1.5 italic font-sans flex items-center gap-1.5">
+                      <Icon name="sparkles" className="h-4 w-4 text-amber-600 inline" />
+                      {selectedModel.description}
+                    </p>
                   </div>
 
-                  {/* Right Results Panel */}
-                  <div className="lg:col-span-7 bg-white p-8 border border-[#E5E2DD] space-y-6">
-                    <h3 className="text-lg font-serif italic text-[#1A1A1A] border-b border-[#E5E2DD] pb-2">Inference Footprint Metrics</h3>
-                    
-                    {/* Footprint Boxes */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="p-4 border border-[#E5E2DD] bg-[#FDFCFB]">
-                        <div className="text-[10px] font-mono text-[#8C8881] uppercase font-bold">Model Weights</div>
-                        <div className="text-2xl font-mono text-[#1A1A1A] font-semibold mt-1">{currentMemoryReport.weightsSize} GB</div>
-                        <div className="text-[9px] font-mono text-[#5C5852] mt-0.5">{selectedCalcModel.params}B params • {selectedCalcQuant.bpw} bpw</div>
-                      </div>
-
-                      <div className="p-4 border border-[#E5E2DD] bg-[#FDFCFB]">
-                        <div className="text-[10px] font-mono text-[#8C8881] uppercase font-bold">KV Cache Allocation</div>
-                        <div className="text-2xl font-mono text-[#1A1A1A] font-semibold mt-1">{currentMemoryReport.kvCacheSize} GB</div>
-                        <div className="text-[9px] font-mono text-[#5C5852] mt-0.5">{calcContextWindow.toLocaleString()} ctx window</div>
-                      </div>
-
-                      <div className="p-4 border border-[#E5E2DD] bg-[#FDFCFB]">
-                        <div className="text-[10px] font-mono text-[#8C8881] uppercase font-bold">Total RAM Footprint</div>
-                        <div className="text-2xl font-mono text-emerald-700 font-bold mt-1">{currentMemoryReport.totalRequired} GB</div>
-                        <div className="text-[9px] font-mono text-[#5C5852] mt-0.5">Includes 1.2GB Engine system load</div>
-                      </div>
+                  {/* Specification Table */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-[#F9F7F2] p-3 border border-neutral-200">
+                      <span className="text-[10px] font-mono text-[#8C8881] uppercase block">Developer</span>
+                      <strong className="text-xs">{selectedModel.developer}</strong>
                     </div>
+                    <div className="bg-[#F9F7F2] p-3 border border-neutral-200">
+                      <span className="text-[10px] font-mono text-[#8C8881] uppercase block">Parameters</span>
+                      <strong className="text-xs">{selectedModel.params}B {selectedModel.type === 'moe' ? 'MoE' : 'Dense'}</strong>
+                    </div>
+                    <div className="bg-[#F9F7F2] p-3 border border-neutral-200">
+                      <span className="text-[10px] font-mono text-[#8C8881] uppercase block">Context Bounds</span>
+                      <strong className="text-xs">{selectedModel.contextLength.toLocaleString()} tokens</strong>
+                    </div>
+                    <div className="bg-[#F9F7F2] p-3 border border-neutral-200">
+                      <span className="text-[10px] font-mono text-[#8C8881] uppercase block">License Format</span>
+                      <strong className="text-xs">{selectedModel.license}</strong>
+                    </div>
+                  </div>
 
-                    {/* Hardware Match Status Indicator Banner */}
-                    <div className={`p-6 border ${
-                      calculatorResult.isCompatible === 'yes' ? 'bg-emerald-50 border-emerald-500/30' :
-                      calculatorResult.isCompatible === 'partial' ? 'bg-amber-50 border-amber-500/30' :
-                      'bg-orange-50 border-orange-500/30'
-                    }`}>
-                      <div className="flex items-start gap-3">
-                        <Icon name={
-                          calculatorResult.isCompatible === 'yes' ? 'check' :
-                          calculatorResult.isCompatible === 'partial' ? 'alert' : 'alert'
-                        } className={`h-5 w-5 shrink-0 ${
-                          calculatorResult.isCompatible === 'yes' ? 'text-emerald-700' :
-                          calculatorResult.isCompatible === 'partial' ? 'text-amber-700' :
-                          'text-orange-700'
-                        }`} />
+                  {/* Benchmarks Metrics Radar */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-mono font-bold uppercase text-[#5C5852] border-b pb-1.5 flex items-center gap-1">
+                      <Icon name="activity" className="h-4 w-4" /> Academic Evaluation Benchmarks
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Left list of indicators */}
+                      <div className="space-y-3">
                         <div>
-                          <h4 className="text-sm font-bold uppercase font-mono tracking-wider">
-                            Compatible: {calculatorResult.isCompatible.toUpperCase()}
-                          </h4>
-                          <p className="text-xs mt-1 text-[#5c5852]">{calculatorResult.explanation}</p>
-                          <div className="mt-2 text-xs font-mono text-[#1a1a1a]">
-                            Bottleneck: <span className="font-semibold">{calculatorResult.bottleneck}</span>
+                          <div className="flex justify-between text-xs font-mono text-neutral-700">
+                            <span>MMLU (General Academics)</span>
+                            <span className="font-bold">{selectedModel.metrics.mmlu ?? 'N/A'}%</span>
+                          </div>
+                          <div className="w-full bg-[#E5E2DD] h-1.5 mt-1">
+                            <div className="bg-[#1A1A1A] h-1.5" style={{ width: `${selectedModel.metrics.mmlu ?? 0}%` }}></div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-xs font-mono text-neutral-700">
+                            <span>GSM8K (Multi-step Math reasoning)</span>
+                            <span className="font-bold">{selectedModel.metrics.gsm8k ?? 'N/A'}%</span>
+                          </div>
+                          <div className="w-full bg-[#E5E2DD] h-1.5 mt-1">
+                            <div className="bg-[#1A1A1A] h-1.5" style={{ width: `${selectedModel.metrics.gsm8k ?? 0}%` }}></div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-xs font-mono text-neutral-700">
+                            <span>HumanEval (Python code completion)</span>
+                            <span className="font-bold">{selectedModel.metrics.humanEval ?? 'N/A'}%</span>
+                          </div>
+                          <div className="w-full bg-[#E5E2DD] h-1.5 mt-1">
+                            <div className="bg-[#1A1A1A] h-1.5" style={{ width: `${selectedModel.metrics.humanEval ?? 0}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right list of indicators */}
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-xs font-mono text-neutral-700">
+                            <span>GPQA (Physics/Graduate level QA)</span>
+                            <span className="font-bold">{selectedModel.metrics.gpqa ?? 'N/A'}%</span>
+                          </div>
+                          <div className="w-full bg-[#E5E2DD] h-1.5 mt-1">
+                            <div className="bg-[#1A1A1A] h-1.5" style={{ width: `${selectedModel.metrics.gpqa ?? 0}%` }}></div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-xs font-mono text-neutral-700">
+                            <span>MATH Score (In-depth problem solving)</span>
+                            <span className="font-bold">{selectedModel.metrics.mathScore ?? 'N/A'}%</span>
+                          </div>
+                          <div className="w-full bg-[#E5E2DD] h-1.5 mt-1">
+                            <div className="bg-[#1A1A1A] h-1.5" style={{ width: `${selectedModel.metrics.mathScore ?? 0}%` }}></div>
                           </div>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Speed Meter Graph */}
-                    <div className="p-6 border border-[#E5E2DD] bg-[#F9F7F2]/40 relative">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h4 className="text-xs font-bold text-[#8C8881] uppercase font-mono">Predicted Generation Speed</h4>
-                          <div className="text-4xl font-mono font-bold mt-1 text-[#1A1A1A]">{calculatorResult.estimatedSpeed} t/s</div>
-                        </div>
-                        <div className="text-right text-[10px] font-mono text-[#5C5852]">
-                          <span>Inference Class: </span>
-                          <span className={`font-bold uppercase ${
-                            calculatorResult.estimatedSpeed > 40 ? 'text-emerald-600' :
-                            calculatorResult.estimatedSpeed > 15 ? 'text-amber-600' : 'text-[#8C8881]'
-                          }`}>
-                            {calculatorResult.estimatedSpeed > 40 ? 'Realtime stream' :
-                             calculatorResult.estimatedSpeed > 15 ? 'Readable pacing' : 'Slow offload'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="w-full bg-[#E5E2DD] h-2">
-                        <div className="bg-[#1A1A1A] h-full transition-all duration-300" style={{ width: `${Math.min(100, (calculatorResult.estimatedSpeed / 120) * 100)}%` }}></div>
-                      </div>
-                      <div className="flex justify-between text-[9px] font-mono text-[#8C8881] mt-1"><span>0 t/s</span><span>50 t/s (Optimal)</span><span>100+ t/s</span></div>
+                  {/* Recommendation Section Box */}
+                  <div className="border border-dashed border-[#1A1A1A] p-4 bg-[#F9F7F2] space-y-2">
+                    <span className="text-[10px] font-bold font-mono tracking-wider bg-neutral-200 text-neutral-800 px-2 py-0.5 uppercase">Local Advice Summary</span>
+                    <p className="text-xs text-neutral-800 leading-relaxed font-sans mt-2">
+                      Because this is a <strong className="text-black">{selectedModel.params}B</strong> parameter weight model, we recommend a baseline formats of <strong className="text-black font-mono">{selectedModel.recommendedQuant || 'Q4_K_M'}</strong>. Select the next tab to compute exact RAM sizes required to deploy the model on your physical computer.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* 2. FOOTPRINT CALCULATOR TAB */}
+            {activeTab === 'calculator' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Inputs Box */}
+                <div className="lg:col-span-4 bg-white p-5 border border-[#E5E2DD] space-y-6">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#5C5852] font-mono border-b pb-2">1. Select Target & Sizing</h3>
+                  
+                  {/* Select Model */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Open Weight Model</label>
+                    <select 
+                      value={calcModel.id} 
+                      onChange={(e) => setCalcModel(MODELS.find(m => m.id === e.target.value))}
+                      className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer"
+                    >
+                      {MODELS.map(m => <option key={m.id} value={m.id}>{m.name} ({m.params}B)</option>)}
+                    </select>
+                  </div>
+
+                  {/* Select Quantization */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Quantization Precision</label>
+                    <select 
+                      value={calcQuant.key} 
+                      onChange={(e) => setCalcQuant(QUANTIZATIONS.find(q => q.key === e.target.value))}
+                      className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer"
+                    >
+                      {QUANTIZATIONS.map(q => <option key={q.key} value={q.key}>{q.name} ({q.bpw} BPW) - {q.qualityLoss} Loss</option>)}
+                    </select>
+                  </div>
+
+                  {/* Slider Context Width */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-mono font-bold">
+                      <span>Context Window (Tokens)</span>
+                      <span>{calcContext.toLocaleString()} tokens</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1024" 
+                      max="131072" 
+                      step="1024" 
+                      value={calcContext} 
+                      onChange={(e) => setCalcContext(Number(e.target.value))}
+                      className="w-full accent-[#1A1A1A] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-[#8C8881] font-mono">
+                      <span>1,024</span>
+                      <span>8K</span>
+                      <span>32K</span>
+                      <span>128K</span>
+                    </div>
+                  </div>
+
+                  {/* Target Hardware Grid */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Physically Simulating Hardware</label>
+                    <select 
+                      value={calcHardware.id} 
+                      onChange={(e) => setCalcHardware(HARDWARE_PROFILES.find(h => h.id === e.target.value))}
+                      className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer text-xs"
+                    >
+                      {HARDWARE_PROFILES.map(h => <option key={h.id} value={h.id}>{h.name} ({h.vram}GB - {h.memoryBandwidth}GB/s)</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Outputs Sizing & Evaluation */}
+                <div className="lg:col-span-8 space-y-6">
+                  
+                  {/* Sizing result card */}
+                  <div className="bg-white p-6 border border-[#E5E2DD] grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-[#8C8881] block">Model Weights Size</span>
+                      <strong className="text-2xl font-serif font-black">{Math.round((calcModel.params * calcQuant.bpw * 1.05 / 8) * 100)/100} GB</strong>
+                      <p className="text-[11px] text-[#5C5852] mt-1 italic">{calcQuant.name} encoding format.</p>
                     </div>
 
-                    {/* Recommendation items */}
-                    <div className="space-y-2 pt-4 border-t border-[#E5E2DD]">
-                      <h4 className="text-xs font-bold text-[#8C8881] uppercase tracking-wider font-mono">System Adjustments Advisor</h4>
-                      <ul className="text-xs space-y-1 text-[#5C5852] list-disc list-inside">
-                        {calculatorResult.recommendations.map((rec, i) => <li key={i}>{rec}</li>)}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-[#8C8881] block">KV Cache Size</span>
+                      <strong className="text-2xl font-serif font-black">{Math.round((calcContext * calcModel.params * (calcModel.developer === 'DeepSeek' && calcModel.type === 'moe' ? 0.0000001 : 0.00000018)) * 100)/100} GB</strong>
+                      <p className="text-[11px] text-[#5C5852] mt-1 italic">Context memory allocation.</p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-[#8C8881] block">Total Footprint</span>
+                      <span className="bg-[#1A1A1A] text-[#F9F7F2] font-mono text-center text-xs px-2.5 py-0.5 font-bold inline-block mb-1">TOTAL REQUIRED</span>
+                      <strong className="text-3xl font-serif font-black text-rose-700 block">{calcResult.requiredVRAM} GB</strong>
+                    </div>
+                  </div>
+
+                  {/* Compatibility evaluation result */}
+                  <div className={`p-6 border ${calcResult.isCompatible === 'yes' ? 'bg-[#ECFDF5] border-emerald-400' : (calcResult.isCompatible === 'partial' ? 'bg-[#FFFBEB] border-amber-400' : 'bg-[#FEF2F2] border-rose-400')} space-y-4`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-mono font-black border uppercase px-3 py-1 ${calcResult.isCompatible === 'yes' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : (calcResult.isCompatible === 'partial' ? 'bg-amber-100 text-amber-800 border-amber-400' : 'bg-rose-105 text-rose-800 border-rose-300')}`}>
+                        {calcResult.isCompatible === 'yes' ? 'Perfect Match' : (calcResult.isCompatible === 'partial' ? 'Paging/Offload' : 'Insufficient memory (OOM)')}
+                      </span>
+                      <h4 className="text-lg font-bold font-serif italic text-neutral-900">{calcHardware.name} vs. {calcModel.name}</h4>
+                    </div>
+
+                    <p className="text-xs text-neutral-800 leading-relaxed font-sans">{calcResult.explanation}</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 border-neutral-200">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-neutral-500 block">Est. Inference Speed</span>
+                        <strong className="text-2xl font-serif font-black text-neutral-900">{calcResult.estimatedSpeed} tokens/sec</strong>
+                        <p className="text-[11px] text-neutral-600 mt-1">Calculated via Memory Bandwidth lines.</p>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-mono uppercase text-neutral-500 block">Primary Bottleneck</span>
+                        <strong className="text-[13px] font-mono text-rose-700 flex items-center gap-1.5 font-semibold mt-1">
+                          <Icon name="alert" className="h-4 w-4" />
+                          {calcResult.bottleneck}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 border-neutral-200">
+                      <span className="text-[10px] font-mono uppercase text-neutral-500 font-bold block mb-2">Tactical Action Recommendation Checklist:</span>
+                      <ul className="text-xs text-neutral-700 space-y-1 list-disc list-inside">
+                        {calcResult.recommendations.map((rec, idx) => <li key={idx} className="font-sans leading-relaxed">{rec}</li>)}
                       </ul>
                     </div>
-
                   </div>
 
                 </div>
@@ -1067,95 +819,88 @@
               </div>
             )}
 
-            {/* 3. HARDWARE MATCHER TAB */}
+            {/* 3. DUAL COMPARISON TAB */}
             {activeTab === 'compare' && (
               <div className="space-y-6">
                 
-                {/* Selector Header block */}
-                <div className="bg-white p-6 border border-[#E5E2DD] grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                {/* Configuration header menu */}
+                <div className="bg-white p-5 border border-[#E5E2DD] gap-6 grid grid-cols-1 md:grid-cols-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Analyze Model</label>
-                    <select value={compModelId} onChange={(e) => setCompModelId(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
+                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Evaluate Model Sizing</label>
+                    <select value={compModel.id} onChange={(e) => setCompModel(MODELS.find(m => m.id === e.target.value))} className="px-3 py-2 border border-[#E5E2DD] w-full text-xs bg-white cursor-pointer font-bold">
                       {MODELS.map(m => <option key={m.id} value={m.id}>{m.name} ({m.params}B)</option>)}
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Quantization format</label>
-                    <select value={compQuantKey} onChange={(e) => setCompQuantKey(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
-                      {QUANTIZATIONS.map(q => <option key={q.key} value={q.key}>{q.name}</option>)}
+                    <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Precision Bits Range</label>
+                    <select value={compQuant.key} onChange={(e) => setCompQuant(QUANTIZATIONS.find(q => q.key === e.target.value))} className="px-3 py-2 border border-[#E5E2DD] w-full text-xs bg-white cursor-pointer font-bold">
+                      {QUANTIZATIONS.map(q => <option key={q.key} value={q.key}>{q.name} ({q.bpw} BPW)</option>)}
                     </select>
                   </div>
 
-                  <div className="text-right text-xs font-mono text-[#8C8881]">
-                    Required memory weight footprint: <strong className="text-[#1A1A1A]">{calculateMemoryFootprint(selectedCompModel, selectedCompQuant, 8192).totalRequired} GB</strong>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-mono font-bold"><span>Context Scale</span><span>{compContext.toLocaleString()} tokens</span></div>
+                    <input type="range" min="1024" max="65536" step="1024" value={compContext} onChange={(e) => setCompContext(Number(e.target.value))} className="w-full accent-[#1A1A1A]" />
                   </div>
                 </div>
 
-                {/* Grid layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left/Right Split view */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
-                  {/* Option A COLUMN */}
-                  <div className="bg-white p-8 border border-[#E5E2DD] space-y-6">
-                    <div className="border-b border-[#E5E2DD] pb-3 flex justify-between items-center">
-                      <h3 className="text-base font-bold font-mono uppercase text-[#5C5852]">Setup Profile A</h3>
-                      <span className="bg-[#1A1A1A] text-white text-[9px] font-mono px-2 py-0.5 tracking-wider">PRIMARY</span>
+                  {/* Comparison profile A */}
+                  <div className="bg-white p-6 border border-[#E5E2DD] space-y-6">
+                    <div className="border-b pb-4 border-neutral-200">
+                      <span className="bg-[#1A1A1A] text-[#F9F7F2] text-[9px] font-mono px-2 py-0.5 tracking-wider uppercase font-bold">HARDWARE SLOT A</span>
+                      <div className="mt-3 space-y-1.5">
+                        <label className="text-xs font-bold text-neutral-500 uppercase block font-mono">Target Rig Setup</label>
+                        <select value={compHardwareA.id} onChange={(e) => setCompHardwareA(HARDWARE_PROFILES.find(h => h.id === e.target.value))} className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer font-bold">
+                          {HARDWARE_PROFILES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-[#8C8881] uppercase font-mono">Select Hardware Engine A</label>
-                      <select value={compHardwareIdA} onChange={(e) => setCompHardwareIdA(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
-                        {HARDWARE_PROFILES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                      </select>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs font-mono"><span>VRAM Allocation:</span><strong className="text-neutral-900">{compHardwareA.vram} GB {compHardwareA.memoryType}</strong></div>
+                      <div className="flex justify-between text-xs font-mono"><span>Memory Bus Speed:</span><strong className="text-neutral-900">{compHardwareA.memoryBandwidth} GB/s</strong></div>
+                      <div className="flex justify-between text-xs font-mono"><span>Inference Match:</span>
+                        <span className={`font-bold uppercase ${compResultA.isCompatible === 'yes' ? 'text-emerald-700' : (compResultA.isCompatible === 'partial' ? 'text-amber-700' : 'text-rose-700')}`}>
+                          {compResultA.isCompatible}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs font-mono"><span>Estimated Speed:</span><strong className="text-emerald-700 text-lg font-serif">{compResultA.estimatedSpeed} tps</strong></div>
                     </div>
 
-                    <div className="space-y-3 font-mono text-xs text-[#5C5852]">
-                      <div className="flex justify-between border-b pb-1.5"><span>VRAM Pool:</span><span className="font-semibold text-[#1A1A1A]">{compHardwareA.vram} GB</span></div>
-                      <div className="flex justify-between border-b pb-1.5"><span>Bandwidth Specs:</span><span className="font-semibold text-[#1A1A1A]">{compHardwareA.memoryBandwidth} GB/s</span></div>
-                      <div className="flex justify-between border-b pb-1.5"><span>Fitted Platform:</span><span className="font-semibold text-[#1A1A1A]">{compHardwareA.platformType}</span></div>
-                    </div>
-
-                    {/* Match report */}
-                    <div className={`p-5 border ${
-                      compMatchA.isCompatible === 'yes' ? 'bg-emerald-50 border-emerald-500/30' :
-                      compMatchA.isCompatible === 'partial' ? 'bg-amber-50 border-amber-500/30' : 'bg-orange-50 border-orange-500/30'
-                    }`}>
-                      <h4 className="text-xs font-mono font-bold uppercase mb-1">Status: {compMatchA.isCompatible.toUpperCase()}</h4>
-                      <p className="text-xs text-[#5C5852]">{compMatchA.explanation}</p>
-                      <div className="mt-3 text-3xl font-mono font-bold text-[#1A1A1A]">{compMatchA.estimatedSpeed} t/s</div>
-                      <span className="text-[9px] font-mono text-[#8C8881]">Estimated speed tps</span>
+                    <div className="bg-[#F9F7F2] p-4 text-xs font-sans text-[#5C5852] border border-dashed leading-relaxed">
+                      {compResultA.explanation}
                     </div>
                   </div>
 
-                  {/* Option B COLUMN */}
-                  <div className="bg-white p-8 border border-[#E5E2DD] space-y-6">
-                    <div className="border-b border-[#E5E2DD] pb-3 flex justify-between items-center">
-                      <h3 className="text-base font-bold font-mono uppercase text-[#5C5852]">Setup Profile B</h3>
-                      <span className="bg-[#5C5852] text-white text-[9px] font-mono px-2 py-0.5 tracking-wider">COMPARE</span>
+                  {/* Comparison profile B */}
+                  <div className="bg-white p-6 border border-[#E5E2DD] space-y-6">
+                    <div className="border-b pb-4 border-neutral-200">
+                      <span className="bg-neutral-200 text-neutral-800 text-[9px] font-mono px-2 py-0.5 tracking-wider uppercase font-bold">HARDWARE SLOT B</span>
+                      <div className="mt-3 space-y-1.5">
+                        <label className="text-xs font-bold text-neutral-500 uppercase block font-mono">Target Rig Setup</label>
+                        <select value={compHardwareB.id} onChange={(e) => setCompHardwareB(HARDWARE_PROFILES.find(h => h.id === e.target.value))} className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer font-bold">
+                          {HARDWARE_PROFILES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-[#8C8881] uppercase font-mono">Select Hardware Engine B</label>
-                      <select value={compHardwareIdB} onChange={(e) => setCompHardwareIdB(e.target.value)} className="w-full px-3 py-2 border border-[#E5E2DD] text-sm bg-white cursor-pointer">
-                        {HARDWARE_PROFILES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                      </select>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs font-mono"><span>VRAM Allocation:</span><strong className="text-neutral-900">{compHardwareB.vram} GB {compHardwareB.memoryType}</strong></div>
+                      <div className="flex justify-between text-xs font-mono"><span>Memory Bus Speed:</span><strong className="text-neutral-900">{compHardwareB.memoryBandwidth} GB/s</strong></div>
+                      <div className="flex justify-between text-xs font-mono"><span>Inference Match:</span>
+                        <span className={`font-bold uppercase ${compResultB.isCompatible === 'yes' ? 'text-emerald-700' : (compResultB.isCompatible === 'partial' ? 'text-amber-700' : 'text-rose-700')}`}>
+                          {compResultB.isCompatible}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs font-mono"><span>Estimated Speed:</span><strong className="text-emerald-700 text-lg font-serif">{compResultB.estimatedSpeed} tps</strong></div>
                     </div>
 
-                    <div className="space-y-3 font-mono text-xs text-[#5C5852]">
-                      <div className="flex justify-between border-b pb-1.5"><span>VRAM Pool:</span><span className="font-semibold text-[#1A1A1A]">{compHardwareB.vram} GB</span></div>
-                      <div className="flex justify-between border-b pb-1.5"><span>Bandwidth Specs:</span><span className="font-semibold text-[#1A1A1A]">{compHardwareB.memoryBandwidth} GB/s</span></div>
-                      <div className="flex justify-between border-b pb-1.5"><span>Fitted Platform:</span><span className="font-semibold text-[#1A1A1A]">{compHardwareB.platformType}</span></div>
-                    </div>
-
-                    {/* Match report */}
-                    <div className={`p-5 border ${
-                      compMatchB.isCompatible === 'yes' ? 'bg-emerald-50 border-emerald-500/30' :
-                      compMatchB.isCompatible === 'partial' ? 'bg-amber-50 border-amber-500/30' : 'bg-orange-50 border-orange-500/30'
-                    }`}>
-                      <h4 className="text-xs font-mono font-bold uppercase mb-1">Status: {compMatchB.isCompatible.toUpperCase()}</h4>
-                      <p className="text-xs text-[#5C5852]">{compMatchB.explanation}</p>
-                      <div className="mt-3 text-3xl font-mono font-bold text-[#1A1A1A]">{compMatchB.estimatedSpeed} t/s</div>
-                      <span className="text-[9px] font-mono text-[#8C8881]">Estimated speed tps</span>
+                    <div className="bg-[#F9F7F2] p-4 text-xs font-sans text-[#5C5852] border border-dashed leading-relaxed">
+                      {compResultB.explanation}
                     </div>
                   </div>
 
@@ -1164,44 +909,25 @@
               </div>
             )}
 
-            {/* 4. SETUP ANALYZER TAB */}
+            {/* 4. SETUP MULTI-MATRIX TAB */}
             {activeTab === 'analyzer' && (
               <div className="space-y-6">
                 
-                {/* Configuration header sliders */}
-                <div className="bg-white p-6 border border-[#E5E2DD] space-y-6">
-                  <div>
-                    <h3 className="text-lg font-serif italic text-[#1A1A1A]">My Infrastructure Specs Setup</h3>
-                    <p className="text-xs text-[#5C5852] mt-0.5">Customize your desktop, rig, or laptop limits to evaluate your custom performance across the whole open weights database.</p>
-                  </div>
-
-                  {/* Preset Buttons row */}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <span className="text-xs font-mono font-bold text-[#1a1a1a] uppercase py-1 px-1 tracking-wider">Presets:</span>
-                    {[
-                      { key: 'starter', label: 'Mid GPU (RTX 3060)' },
-                      { key: 'mid', label: 'Pro GPU (4070TiSuper)' },
-                      { key: 'extreme', label: 'Ultimate GPU (RTX 4090)' },
-                      { key: 'mac-m-pro', label: 'Mac Pro (36GB)' },
-                      { key: 'mac-m-max', label: 'Mac Max (128GB)' },
-                      { key: 'mac-m-ultra', label: 'Mac Ultra (192GB)' },
-                      { key: 'cpu-ddr4', label: 'CPU DDR4 Workstation' },
-                      { key: 'cpu-ddr5', label: 'CPU DDR5 Workstation' }
-                    ].map(p => (
-                      <button 
-                        key={p.key} onClick={() => applyRigPreset(p.key)}
-                        className="px-3 py-1 font-mono text-[10px] uppercase border hover:border-[#1A1A1A] hover:bg-[#F9F7F2]"
-                      >
-                        {p.label}
-                      </button>
-                    ))}
+                {/* Rig Input Box Controls */}
+                <div className="bg-white p-6 border border-[#E5E2DD] space-y-4">
+                  <div className="border-b pb-2 flex justify-between items-center">
+                    <h3 className="text-lg font-bold font-serif text-[#1A1A1A] flex items-center gap-1.5">
+                      <Icon name="sliders" className="h-5 w-5 text-neutral-800" />
+                      Parameter-Sizing Rig Simulator
+                    </h3>
+                    <span className="text-[10px] font-mono text-neutral-400">Interactive testing tool</span>
                   </div>
 
                   {/* Sliders layout */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#F2EFE9]">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold uppercase text-[#5C5852] font-mono">Compute Platform Type</label>
-                      <select value={rigPlatform} onChange={(e) => setRigPlatform(e.target.value)} className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer font-sans">
+                      <select value={rigPlatform} onChange={(e) => setRigPlatform(e.target.value)} className="px-3 py-2 border border-[#E5E2DD] w-full text-sm bg-white cursor-pointer font-sans font-semibold">
                         <option value="pc_gpu">NVIDIA/AMD Discrete GPU Laptop/PC</option>
                         <option value="mac">Apple Metal Silicon Series Unified</option>
                         <option value="pc_cpu">Standard CPU Processing (Pure system RAM)</option>
@@ -1236,7 +962,7 @@
 
                 {/* Performance Evaluation Matrix Table */}
                 <div className="bg-white p-6 border border-[#E5E2DD] space-y-4">
-                  <h3 className="text-lg font-serif italic text-[#1A1A1A] border-b pb-2">Evaluated Database Cross-Matrix</h3>
+                  <h3 className="text-lg font-serif italic text-[#1A1A1A] border-b pb-2">Evaluated Database Cross-Matrix (Standard 8K context)</h3>
                   
                   <div className="overflow-x-auto border border-[#1A1A1A]">
                     <table className="w-full text-left text-xs">
@@ -1289,7 +1015,7 @@
                   </div>
 
                   <div className="space-y-1 text-[10px] text-[#8C8881] font-mono leading-relaxed border-t pt-4">
-                    <p>• <strong className="text-[#1a1a1a]">OOM (Out of Memory)</strong>: Hit hard physical bounds. The layout cannot start.</p>
+                    <p>• <strong className="text-[#1a1a1a]">OOM (Out of Memory)</strong>: Hit hard physical bounds. The simulation cannot start.</p>
                     <p>• <strong className="text-[#1a1a1a]">Paging / Offload</strong>: Llama.cpp splits execution layers. GPU handles partial loads while RAM synchronizes across PCIe lanes.</p>
                   </div>
                 </div>
@@ -1364,7 +1090,7 @@
           </main>
 
           {/* FOOTER BAR */}
-          <footer className="bg-[#F9F7F2] border-t border-[#1A1A1A] py-8">
+          <footer className="bg-[#F9F7F2] border-t border-[#1A1A1A] py-8 mt-auto shrink-0">
             <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-[10px] text-[#8C8881] font-mono uppercase tracking-wider">
                 Local AI Hardware Correlation Matrix • June 2026 Edition
